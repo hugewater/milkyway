@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ocean-blue: #0077be;
+  --deep-ocean: #003d5c;
+  --seafoam: #40e0d0;
+  --forest-green: #228b22;
+  --mint-green: #98fb98;
+  --wave-gradient: linear-gradient(135deg, #0077be 0%, #40e0d0 50%, #228b22 100%);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  margin: 0;
+  background: linear-gradient(135deg, #e3f2fd 0%, #e8f5e8 100%);
+  min-height: 100vh;
+}
+
+.ocean-gradient {
+  background: var(--wave-gradient);
+}
+
+.ocean-blue {
+  background-color: var(--ocean-blue);
+}
+
+.deep-ocean {
+  background-color: var(--deep-ocean);
+}
+
+.seafoam {
+  background-color: var(--seafoam);
+}
+
+.forest-green {
+  background-color: var(--forest-green);
+}
+
+.text-ocean {
+  color: var(--ocean-blue);
+}
+
+.text-deep-ocean {
+  color: var(--deep-ocean);
+}
+
+.border-ocean {
+  border-color: var(--ocean-blue);
+}
+
+.hover-ocean:hover {
+  background-color: var(--deep-ocean);
+}
+
+.sidebar {
+  background: linear-gradient(180deg, var(--ocean-blue) 0%, var(--deep-ocean) 100%);
+  box-shadow: 4px 0 15px rgba(0, 119, 190, 0.1);
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(64, 224, 208, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 119, 190, 0.1);
+}
+
+.btn-primary {
+  background: var(--wave-gradient);
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 119, 190, 0.3);
+}
+
+.wave-pattern {
+  background: 
+    radial-gradient(circle at 25% 25%, rgba(64, 224, 208, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(0, 119, 190, 0.1) 0%, transparent 50%);
+}
+
+.number-ball {
+  background: var(--wave-gradient);
+  color: white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin: 2px;
+}
+
+.powerball {
+  background: #dc2626 !important;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+}

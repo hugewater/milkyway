@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resizable Popup Tree Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .resizable-popup {
+      position: absolute;
+      border: 1px solid #ccc;
+      background: white;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      min-width: 300px;
+      min-height: 200px;
+    }
+    .popup-header {
+      padding: 10px;
+      background: #007bff;
+      color: white;
+      cursor: move;
+      user-select: none;
+    }
+    .popup-content {
+      padding: 15px;
+    }
+    .resize-handle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #007bff;
+      bottom: 0;
+      right: 0;
+      cursor: nwse-resize;
+    }
+    .tree-node {
+      margin: 5px 0;
+      padding: 5px;
+      border-left: 2px solid #007bff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tree Demo (Resizable Popup)</h1>
+  <button id="openPopup">Open Popup</button>
+
+  <div id="popup" class="resizable-popup" style="display: none; top: 100px; left: 100px; width: 400px; height: 300px;">
+    <div class="popup-header">Tree View</div>
+    <div class="popup-content">
+      <div class="tree-node">Root
+        <div class="tree-node">Child 1
+          <div class="tree-node">Grandchild 1</div>
+          <div class="tree-node">Grandchild 2</div>
+        </div>
+        <div class="tree-node">Child 2</div>
+      </div>
+    </div>
+    <div class="resize-handle"></div>
+  </div>
+
+  <script>
+    const popup = document.getElementById('popup');
+    const header = popup.querySelector('.popup-header');
+    const resizeHandle = popup.querySelector('.resize-handle');
+
+    let isDragging = false;
+    let isResizing = false;
+    let offsetX, offsetY;
+
+    // Open popup
+    document.getElementById('openPopup').addEventListener('click', () => {
+      popup.style.display = 'block';
+    });
+
+    // Drag logic
+    header.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      offsetX = e.clientX - popup.offsetLeft;
+      offsetY = e.clientY - popup.offsetTop;
+    });
+
+    // Resize logic
+    resizeHandle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      e.stopPropagation();
+    });
+
+    // Mouse move handler
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        popup.style.left = (e.clientX - offsetX) + 'px';
+        popup.style.top = (e.clientY - offsetY) + 'px';
+      } else if (isResizing) {
+        popup.style.width = (e.clientX - popup.offsetLeft) + 'px';
+        popup.style.height = (e.clientY - popup.offsetTop) + 'px';
+      }
+    });
+
+    // Mouse up handler
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      isResizing = false;
+    });
+  </script>
+</body>
+</html>
