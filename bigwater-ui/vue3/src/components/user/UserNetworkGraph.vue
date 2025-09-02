@@ -2,12 +2,8 @@
   <div class="bg-white rounded-lg shadow-xl w-full mx-4 max-h-[90vh] overflow-auto resize max-w-[95vw] md:max-w-6xl" 
        ref="modalContainer"
        :style="{ minWidth: '800px', minHeight: '600px' }">
-    <!-- Header -->
-    <div class="flex items-center justify-between p-6 border-b border-gray-200">
-      <div>
-        <h2 class="text-2xl font-bold text-deep-ocean">Team Network Graph</h2>
-        <p class="text-gray-600 mt-1">Visual representation of your downline structure</p>
-      </div>
+    <!-- Header (no title) -->
+    <div class="flex items-center justify-end p-2">
       <div class="flex items-center space-x-3">
         <button
           @click="$emit('close')"
@@ -21,9 +17,9 @@
     </div>
 
     <!-- Content -->
-    <div class="p-6 flex flex-col h-full">
+    <div class="p-3 flex flex-col h-full">
       <!-- Toggle Buttons -->
-      <div class="flex justify-center mb-6">
+      <div class="flex justify-center mb-2">
         <div class="bg-gray-100 rounded-lg p-1">
           <button
             @click="viewMode = 'graph'"
@@ -188,7 +184,7 @@ const buildSeries = (treeData) => ({
   name: 'Team Network',
   type: 'tree',
   data: [treeData],
-  top: '10%',
+  top: '2%',
   left: '5%',
   bottom: '5%',
   right: '5%',
@@ -241,12 +237,6 @@ const applyTreeOption = (treeData) => {
   if (!chart) return
   const option = {
     backgroundColor: '#f8fafc',
-    title: {
-      text: 'Team Network Graph',
-      left: 'center',
-      top: 20,
-      textStyle: { color: '#1e40af', fontSize: 18 }
-    },
     tooltip: {
       trigger: 'item',
       formatter: function(params) {
@@ -628,7 +618,7 @@ watch(() => props.downlines, () => {
         name: 'Team Network',
         type: 'tree',
         data: [treeData],
-        top: '10%',
+        top: '2%',
         left: '5%',
         bottom: '5%',
         right: '5%',
