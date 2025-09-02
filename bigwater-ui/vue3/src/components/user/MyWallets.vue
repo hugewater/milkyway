@@ -1,24 +1,17 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white shadow">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center py-6">
-          <div class="flex items-center">
-            <h1 class="text-2xl font-bold text-gray-900">My Wallets</h1>
-          </div>
-          <button
-            @click="showAddWalletModal = true"
-            class="btn-primary px-4 py-2 rounded-lg"
-          >
-            Add Wallet
-          </button>
-        </div>
+  <AppLayout>
+    <div class="px-4 lg:px-6 py-6">
+      <div class="flex justify-end mb-4">
+        <button
+          @click="showAddWalletModal = true"
+          class="btn-primary px-4 py-2 rounded-lg"
+        >
+          Add Wallet
+        </button>
       </div>
-    </div>
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Main Content -->
+      <div class="max-w-7xl mx-auto">
       <!-- Stats -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white rounded-lg shadow p-6">
@@ -127,10 +120,11 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
 
     <!-- Add Wallet Modal -->
-    <div v-if="showAddWalletModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div v-if="showAddWalletModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3">
           <h3 class="text-lg font-medium text-gray-900 mb-4">Add New Wallet</h3>
@@ -204,11 +198,12 @@
         </div>
       </div>
     </div>
-  </div>
+  </AppLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import AppLayout from '../layouts/AppLayout.vue'
 import { getUserId } from '../../utils/auth.js'
 import apiService from '../../utils/api.js'
 

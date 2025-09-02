@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden resize overflow-auto" 
+  <div class="bg-white rounded-lg shadow-xl w-full mx-4 max-h-[90vh] overflow-auto resize max-w-[95vw] md:max-w-6xl" 
        ref="modalContainer"
        :style="{ minWidth: '800px', minHeight: '600px' }">
     <!-- Header -->
@@ -52,7 +52,7 @@
       </div>
 
       <!-- Graph View -->
-      <div v-if="viewMode === 'graph'" class="w-full flex-1 min-h-0">
+      <div v-if="viewMode === 'graph'" class="w-full flex-1 min-h-0 overflow-auto">
         <div ref="chartContainer" id="chartContainer" class="w-full h-full" style="min-height: 400px;"></div>
       </div>
 
@@ -771,6 +771,8 @@ const sortedDownlines = computed(() => {
   border-radius: 8px;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border: 1px solid #e2e8f0;
+  /* Ensure scroll on small screens */
+  overflow: auto;
 }
 </style>
 
