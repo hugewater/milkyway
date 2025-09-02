@@ -10,7 +10,6 @@ import Home from './components/Home.vue'
 import Login from './components/Login.vue'
 import Signup from './components/Signup.vue'
 import Dashboard from './components/Dashboard.vue'
-import UserDashboard from './components/user/UserDashboard.vue'
 import AdminHome from './components/AdminHome.vue'
 import Journals from './components/user/Journals.vue'
 import Team from './components/user/Team.vue'
@@ -32,7 +31,7 @@ const routes = [
   { path: '/', component: Home },
   { path: '/login', component: Login },
   { path: '/signup', component: Signup },
-  { path: '/dashboard', component: UserDashboard },
+  { path: '/dashboard', component: Dashboard },
   { path: '/admin', component: AdminHome },
   { path: '/journals', component: Journals },
   { path: '/team', component: Team },

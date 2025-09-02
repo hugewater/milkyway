@@ -12,7 +12,7 @@
               </div>
               <div class="ml-4">
                 <p class="text-sm text-gray-600">Direct Referrals</p>
-                <p class="text-2xl font-bold text-deep-ocean">12</p>
+                <p class="text-2xl font-bold text-deep-ocean">{{ loading ? '...' : level1Count }}</p>
               </div>
             </div>
           </div>
@@ -26,7 +26,7 @@
               </div>
               <div class="ml-4">
                 <p class="text-sm text-gray-600">Total Network</p>
-                <p class="text-2xl font-bold text-deep-ocean">47</p>
+                <p class="text-2xl font-bold text-deep-ocean">{{ loading ? '...' : totalNetworkCount }}</p>
               </div>
             </div>
           </div>
@@ -40,7 +40,7 @@
               </div>
               <div class="ml-4">
                 <p class="text-sm text-gray-600">Network Value</p>
-                <p class="text-2xl font-bold text-deep-ocean">$1,410</p>
+                <p class="text-2xl font-bold text-deep-ocean">${{ loading ? '...' : networkValue }}</p>
               </div>
             </div>
           </div>
@@ -70,30 +70,86 @@
 
         <!-- Team Structure -->
         <div class="card p-6 rounded-2xl mb-8">
-          <h3 class="text-lg font-bold text-deep-ocean mb-6">Team Structure</h3>
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-bold text-deep-ocean">Team Structure</h3>
+            <div class="flex items-center space-x-2">
+              <button
+                @click="openAddMyDownline"
+                class="btn-primary px-4 py-2 rounded-lg font-medium"
+              >
+                Add My Downline
+              </button>
+              <button
+                @click="showGraphModal = true"
+                class="btn-primary px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <span>Graph</span>
+              </button>
+            </div>
+          </div>
           
           <!-- Level 1 - Direct Referrals -->
           <div class="mb-6">
             <h4 class="font-semibold text-deep-ocean mb-4 flex items-center">
               <span class="w-6 h-6 bg-ocean text-white rounded-full flex items-center justify-center text-sm mr-2">1</span>
-              Level 1 - Direct Referrals (12 members)
+              Level 1 - Direct Referrals ({{ level1Count }} members)
             </h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div v-for="member in level1Members" :key="member.id" class="border border-gray-200 rounded-lg p-4">
-                <div class="flex items-center space-x-3 mb-2">
-                  <div class="w-10 h-10 bg-ocean rounded-full flex items-center justify-center text-white font-medium">
-                    {{ member.initials }}
-                  </div>
-                  <div>
-                    <p class="font-medium text-gray-900">{{ member.name }}</p>
-                    <p class="text-sm text-gray-500">{{ member.email }}</p>
-                  </div>
-                </div>
-                <div class="flex justify-between text-sm">
-                  <span class="text-gray-600">Joined: {{ member.joinDate }}</span>
-                  <span class="text-forest-green font-medium">${{ member.contribution }}</span>
-                </div>
-              </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border border-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referral Code</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contribution</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                  <tr v-for="member in level1Members" :key="member.id" class="hover:bg-gray-50 cursor-pointer" 
+                      :title="`Title: ${member.userLevel} | Referral Code: ${member.referralCode || 'N/A'}`">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-ocean rounded-full flex items-center justify-center text-white font-medium">
+                          {{ member.initials }}
+                        </div>
+                        <div>
+                          <p class="font-medium text-gray-900">{{ member.name }}</p>
+                          <p class="text-sm text-gray-500 cursor-pointer hover:text-ocean hover:underline" 
+                             @click="addDirectDownline(member)" 
+                             :title="`Click to add direct downline under ${member.name}`">
+                            {{ member.email }}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {{ member.userLevel }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
+                            :class="member.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                        {{ member.status }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {{ member.joinDate }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                      {{ member.referralCode || 'N/A' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-forest-green">
+                      ${{ member.contribution }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -101,24 +157,61 @@
           <div class="mb-6">
             <h4 class="font-semibold text-deep-ocean mb-4 flex items-center">
               <span class="w-6 h-6 bg-forest-green text-white rounded-full flex items-center justify-center text-sm mr-2">2</span>
-              Level 2 - Indirect Referrals (23 members)
+              Level 2 - Indirect Referrals ({{ level2Count }} members)
             </h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div v-for="member in level2Members" :key="member.id" class="border border-gray-200 rounded-lg p-4">
-                <div class="flex items-center space-x-3 mb-2">
-                  <div class="w-10 h-10 bg-forest-green rounded-full flex items-center justify-center text-white font-medium">
-                    {{ member.initials }}
-                  </div>
-                  <div>
-                    <p class="font-medium text-gray-900">{{ member.name }}</p>
-                    <p class="text-sm text-gray-500">{{ member.email }}</p>
-                  </div>
-                </div>
-                <div class="flex justify-between text-sm">
-                  <span class="text-gray-600">Joined: {{ member.joinDate }}</span>
-                  <span class="text-forest-green font-medium">${{ member.contribution }}</span>
-                </div>
-              </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border border-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referral Code</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contribution</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                  <tr v-for="member in level2Members" :key="member.id" class="hover:bg-gray-50 cursor-pointer" 
+                      :title="`Title: ${member.userLevel} | Referral Code: ${member.referralCode || 'N/A'}`">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-forest-green rounded-full flex items-center justify-center text-white font-medium">
+                          {{ member.initials }}
+                        </div>
+                        <div>
+                          <p class="font-medium text-gray-900">{{ member.name }}</p>
+                          <p class="text-sm text-gray-500 cursor-pointer hover:text-ocean hover:underline" 
+                             @click="addDirectDownline(member)" 
+                             :title="`Click to add direct downline under ${member.name}`">
+                            {{ member.email }}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {{ member.userLevel }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
+                            :class="member.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                        {{ member.status }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {{ member.joinDate }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                      {{ member.referralCode || 'N/A' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-forest-green">
+                      ${{ member.contribution }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -126,24 +219,61 @@
           <div>
             <h4 class="font-semibold text-deep-ocean mb-4 flex items-center">
               <span class="w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-sm mr-2">3</span>
-              Level 3 - Third Level (12 members)
+              Level 3 - Third Level ({{ level3Count }} members)
             </h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div v-for="member in level3Members" :key="member.id" class="border border-gray-200 rounded-lg p-4">
-                <div class="flex items-center space-x-3 mb-2">
-                  <div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-medium">
-                    {{ member.initials }}
-                  </div>
-                  <div>
-                    <p class="font-medium text-gray-900">{{ member.name }}</p>
-                    <p class="text-sm text-gray-500">{{ member.email }}</p>
-                  </div>
-                </div>
-                <div class="flex justify-between text-sm">
-                  <span class="text-gray-600">Joined: {{ member.joinDate }}</span>
-                  <span class="text-forest-green font-medium">${{ member.contribution }}</span>
-                </div>
-              </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border border-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referral Code</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contribution</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                  <tr v-for="member in level3Members" :key="member.id" class="hover:bg-gray-50 cursor-pointer" 
+                      :title="`Title: ${member.userLevel} | Referral Code: ${member.referralCode || 'N/A'}`">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-medium">
+                          {{ member.initials }}
+                        </div>
+                        <div>
+                          <p class="font-medium text-gray-900">{{ member.name }}</p>
+                          <p class="text-sm text-gray-500 cursor-pointer hover:text-ocean hover:underline" 
+                             @click="addDirectDownline(member)" 
+                             :title="`Click to add direct downline under ${member.name}`">
+                            {{ member.email }}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        {{ member.userLevel }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
+                            :class="member.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                        {{ member.status }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {{ member.joinDate }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                      {{ member.referralCode || 'N/A' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-forest-green">
+                      ${{ member.contribution }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -196,38 +326,478 @@
               </div>
             </div>
           </div>
+                </div>
+
+        <!-- ECharts Network Graph Modal -->
+        <div
+          v-if="showGraphModal"
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          @click="closeModal"
+        >
+          <UserNetworkGraph
+            :selectedUser="currentUserForGraph"
+            :downlines="allDownlineMembers"
+            :loading="false"
+            @close="showGraphModal = false"
+          />
         </div>
-    </div>
-  </AppLayout>
-</template>
+
+        <!-- Add Direct Downline Modal -->
+        <div
+          v-if="showAddDownlineModal"
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          @click="closeAddDownlineModal"
+        >
+          <div
+            class="bg-white rounded-lg p-6 max-w-md w-full mx-4"
+            @click.stop
+          >
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-bold text-deep-ocean">Add Direct Downline</h3>
+              <button
+                @click="closeAddDownlineModal"
+                class="text-gray-400 hover:text-gray-600"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+
+            <form class="mb-4" @submit.prevent="submitAddDownline" autocomplete="off">
+              <!-- Anti-autofill dummies -->
+              <input type="text" name="fake-username" autocomplete="username" style="display:none" />
+              <input type="password" name="fake-password" autocomplete="current-password" style="display:none" />
+
+              <p class="text-sm text-gray-600 mb-2">
+                Adding direct downline under: <span class="font-medium text-deep-ocean">{{ selectedMember?.name }}</span>
+              </p>
+              <p class="text-sm text-gray-500">
+                Referral Code: <span class="font-mono text-ocean">{{ selectedMember?.referralCode }}</span>
+              </p>
+            
+            <div class="space-y-4 mt-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+                <input
+                  v-model="newDownlineForm.email"
+                  type="email"
+                  placeholder="Enter email address"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-ocean focus:border-ocean"
+                  autocomplete="email"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                <input
+                  v-model="newDownlineForm.firstName"
+                  type="text"
+                  placeholder="Enter first name (optional)"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-ocean focus:border-ocean"
+                  autocomplete="given-name"
+                />
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                <input
+                  v-model="newDownlineForm.lastName"
+                  type="text"
+                  placeholder="Enter last name (optional)"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-ocean focus:border-ocean"
+                  autocomplete="family-name"
+                />
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                <input
+                  v-model="newDownlineForm.phone"
+                  type="tel"
+                  placeholder="Enter phone number (optional)"
+                  name="new-phone"
+                  autocomplete="tel"
+                  inputmode="tel"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-ocean focus:border-ocean"
+                />
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                <input
+                  v-model="newDownlineForm.password"
+                  type="password"
+                  placeholder="Enter password"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-ocean focus:border-ocean"
+                  autocomplete="new-password"
+                  required
+                />
+              </div>
+              
+              <div class="grid grid-cols-2 gap-3 mt-2">
+                <button
+                  type="button"
+                  @click="closeAddDownlineModal"
+                  class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  :disabled="addingDownline"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  class="w-full px-4 py-2 btn-primary rounded-md disabled:opacity-50"
+                  :disabled="addingDownline"
+                >
+                  <span v-if="addingDownline">Adding...</span>
+                  <span v-else>Add Downline</span>
+                </button>
+              </div>
+            </div>
+            </form>
+
+            <div class="mt-4 p-3 bg-blue-50 rounded-md">
+              <p class="text-xs text-blue-800">
+                <strong>Note:</strong> An invitation email will be sent to the specified email address. 
+                The new member will be automatically placed under {{ selectedMember?.name }} in your team structure.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AppLayout from '../layouts/AppLayout.vue'
+import UserNetworkGraph from './UserNetworkGraph.vue'
+import { currentUser } from '../../utils/auth.js'
+import apiService from '../../utils/api.js'
 
-const referralLink = ref('https://6768688.com/signup?ref=BW12345678')
+const referralLink = computed(() => {
+  const referralCode = currentUser.value?.referralCode || 'BW12345678'
+  return `https://6768688.com/signup?ref=${referralCode}`
+})
 
-// Mock team data
-const level1Members = ref([
-  { id: 1, name: 'Sarah Johnson', email: 'sarah@email.com', initials: 'SJ', joinDate: '2024-10-15', contribution: '120' },
-  { id: 2, name: 'Mike Chen', email: 'mike@email.com', initials: 'MC', joinDate: '2024-10-12', contribution: '90' },
-  { id: 3, name: 'Lisa Brown', email: 'lisa@email.com', initials: 'LB', joinDate: '2024-10-08', contribution: '150' },
-  { id: 4, name: 'David Wilson', email: 'david@email.com', initials: 'DW', joinDate: '2024-10-05', contribution: '75' }
-])
+const showGraphModal = ref(false)
+const showAddDownlineModal = ref(false)
+const selectedMember = ref(null)
+const loading = ref(false)
+const addingDownline = ref(false)
+const newDownlineForm = ref({
+  email: '',
+  firstName: '',
+  lastName: '',
+  phone: '',
+  password: ''
+})
 
-const level2Members = ref([
-  { id: 5, name: 'Emma Davis', email: 'emma@email.com', initials: 'ED', joinDate: '2024-10-20', contribution: '60' },
-  { id: 6, name: 'James Miller', email: 'james@email.com', initials: 'JM', joinDate: '2024-10-18', contribution: '45' },
-  { id: 7, name: 'Olivia Garcia', email: 'olivia@email.com', initials: 'OG', joinDate: '2024-10-16', contribution: '80' }
-])
+// Real team data from API
+const level1Members = ref([])
+const level2Members = ref([])
+const level3Members = ref([])
+const networkData = ref(null)
 
-const level3Members = ref([
-  { id: 8, name: 'Noah Martinez', email: 'noah@email.com', initials: 'NM', joinDate: '2024-10-25', contribution: '30' },
-  { id: 9, name: 'Ava Rodriguez', email: 'ava@email.com', initials: 'AR', joinDate: '2024-10-22', contribution: '40' }
-])
+// Helper function to generate initials
+const getInitials = (firstName, lastName) => {
+  if (firstName && lastName) {
+    return `${firstName[0]}${lastName[0]}`.toUpperCase()
+  }
+  return 'U'
+}
+
+// Helper function to format date
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+  return new Date(dateString).toLocaleDateString()
+}
+
+// Helper function to calculate contribution (placeholder)
+const calculateContribution = (user) => {
+  // This could be based on actual business logic
+  return Math.floor(Math.random() * 200) + 50
+}
+
+// Load team network data from API
+const loadNetworkData = async () => {
+  console.log('=== LOAD NETWORK DATA START ===')
+  console.log('Current user:', currentUser.value)
+  console.log('Current user ID:', currentUser.value?.id)
+  
+  if (!currentUser.value?.id) {
+    console.error('No current user ID found!')
+    return
+  }
+  
+  loading.value = true
+  try {
+    console.log('Loading network data for user:', currentUser.value.id)
+    const response = await apiService.getUserNetwork(currentUser.value.id)
+    console.log('API response:', response)
+    
+    if (response.success && response.data) {
+      networkData.value = response.data
+      console.log('Network data received:', response.data)
+      
+      // Process downlines and organize by levels
+      const downlines = response.data.downlines || []
+      
+      // Clear existing data
+      level1Members.value = []
+      level2Members.value = []
+      level3Members.value = []
+      
+      // Group downlines by their relationship level
+      const processedMembers = new Map()
+      
+      // First, identify direct referrals (Level 1)
+      const directReferrals = downlines.filter(member => 
+        member.referredByCode === currentUser.value.referralCode
+      )
+      
+      directReferrals.forEach(member => {
+        const processedMember = {
+          id: member.id,
+          name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email,
+          email: member.email,
+          initials: getInitials(member.firstName, member.lastName),
+          level: 1,
+          userLevel: member.level || 'Chief',
+          status: member.status?.toLowerCase() || 'active',
+          joinDate: formatDate(member.joinDate),
+          contribution: calculateContribution(member),
+          referralCode: member.referralCode,
+          referredByCode: member.referredByCode
+        }
+        level1Members.value.push(processedMember)
+        processedMembers.set(member.id, { ...processedMember, referralCode: member.referralCode })
+      })
+      
+      // Find Level 2 members (referred by Level 1 members)
+      const level1ReferralCodes = directReferrals.map(m => m.referralCode)
+      const level2Referrals = downlines.filter(member => 
+        level1ReferralCodes.includes(member.referredByCode) && 
+        !directReferrals.some(dr => dr.id === member.id)
+      )
+      
+      level2Referrals.forEach(member => {
+        const processedMember = {
+          id: member.id,
+          name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email,
+          email: member.email,
+          initials: getInitials(member.firstName, member.lastName),
+          level: 2,
+          userLevel: member.level || 'Chief',
+          status: member.status?.toLowerCase() || 'active',
+          joinDate: formatDate(member.joinDate),
+          contribution: calculateContribution(member),
+          referralCode: member.referralCode,
+          referredByCode: member.referredByCode
+        }
+        level2Members.value.push(processedMember)
+        processedMembers.set(member.id, { ...processedMember, referralCode: member.referralCode })
+      })
+      
+      // Find Level 3 members (referred by Level 2 members)
+      const level2ReferralCodes = level2Referrals.map(m => m.referralCode)
+      const level3Referrals = downlines.filter(member => 
+        level2ReferralCodes.includes(member.referredByCode) && 
+        !directReferrals.some(dr => dr.id === member.id) &&
+        !level2Referrals.some(l2 => l2.id === member.id)
+      )
+      
+      level3Referrals.forEach(member => {
+        const processedMember = {
+          id: member.id,
+          name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email,
+          email: member.email,
+          initials: getInitials(member.firstName, member.lastName),
+          level: 3,
+          userLevel: member.level || 'Chief',
+          status: member.status?.toLowerCase() || 'active',
+          joinDate: formatDate(member.joinDate),
+          contribution: calculateContribution(member),
+          referralCode: member.referralCode,
+          referredByCode: member.referredByCode
+        }
+        level3Members.value.push(processedMember)
+        processedMembers.set(member.id, { ...processedMember, referralCode: member.referralCode })
+      })
+      
+      console.log('Processed network data:')
+      console.log('Level 1:', level1Members.value.length, 'members')
+      console.log('Level 2:', level2Members.value.length, 'members')
+      console.log('Level 3:', level3Members.value.length, 'members')
+      
+    } else {
+      console.error('Failed to load network data:', response)
+    }
+  } catch (error) {
+    console.error('Error loading network data:', error)
+  } finally {
+    loading.value = false
+  }
+}
 
 const copyReferralLink = () => {
   navigator.clipboard.writeText(referralLink.value)
   alert('Referral link copied to clipboard!')
 }
+
+const addDirectDownline = (member) => {
+  selectedMember.value = member
+  // Reset form
+  newDownlineForm.value = {
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    password: ''
+  }
+  showAddDownlineModal.value = true
+}
+
+// Open add modal to add a direct downline under current user
+const openAddMyDownline = () => {
+  selectedMember.value = {
+    id: currentUser.value?.id,
+    name: currentUser.value?.firstName && currentUser.value?.lastName
+      ? `${currentUser.value.firstName} ${currentUser.value.lastName}`
+      : currentUser.value?.email || 'You',
+    referralCode: currentUser.value?.referralCode
+  }
+  // Pre-populate referral code by selecting current user as parent
+  // Reset inputs to ensure no autofill leftovers
+  newDownlineForm.value.email = ''
+  newDownlineForm.value.firstName = ''
+  newDownlineForm.value.lastName = ''
+  newDownlineForm.value.phone = ''
+  newDownlineForm.value.password = ''
+  showAddDownlineModal.value = true
+}
+
+const submitAddDownline = async () => {
+  if (!newDownlineForm.value.email) {
+    alert('Email is required')
+    return
+  }
+  
+  if (!newDownlineForm.value.password) {
+    alert('Password is required')
+    return
+  }
+  
+  addingDownline.value = true
+  try {
+    // Include referralCode directly from the selected member to boost performance
+    const downlineData = {
+      ...newDownlineForm.value,
+      referralCode: selectedMember.value.referralCode
+    }
+    
+    const response = await apiService.addDownline(selectedMember.value.id, downlineData)
+    
+    if (response.success) {
+      alert('Downline added successfully!')
+      closeAddDownlineModal()
+      // Reload network data to show the new member
+      await loadNetworkData()
+    } else {
+      alert(`Failed to add downline: ${response.error}`)
+    }
+  } catch (error) {
+    console.error('Error adding downline:', error)
+    alert(`Error adding downline: ${error.message}`)
+  } finally {
+    addingDownline.value = false
+  }
+}
+
+const closeModal = (event) => {
+  if (event.target === event.currentTarget) {
+    showGraphModal.value = false
+  }
+}
+
+const closeAddDownlineModal = () => {
+  showAddDownlineModal.value = false
+  selectedMember.value = null
+}
+
+// Load data when component mounts
+onMounted(() => {
+  loadNetworkData()
+})
+
+// Summary counts
+const level1Count = computed(() => level1Members.value.length)
+const level2Count = computed(() => level2Members.value.length)
+const level3Count = computed(() => level3Members.value.length)
+const totalNetworkCount = computed(() => level1Count.value + level2Count.value + level3Count.value)
+
+// Calculate network value based on contributions
+const networkValue = computed(() => {
+  const total = [...level1Members.value, ...level2Members.value, ...level3Members.value]
+    .reduce((sum, member) => sum + (parseInt(member.contribution) || 0), 0)
+  return total.toLocaleString()
+})
+
+// Prepare data for ECharts Network Graph
+const currentUserForGraph = computed(() => {
+  const result = {
+    id: currentUser.value?.id, // Use actual numeric ID instead of 'current_user'
+    name: currentUser.value?.firstName && currentUser.value?.lastName 
+      ? `${currentUser.value.firstName} ${currentUser.value.lastName}`
+      : currentUser.value?.email || 'You',
+    fullName: currentUser.value?.firstName && currentUser.value?.lastName 
+      ? `${currentUser.value.firstName} ${currentUser.value.lastName}`
+      : currentUser.value?.email || 'You',
+    email: currentUser.value?.email || '',
+    level: currentUser.value?.level || 'Chief',
+    referralCode: currentUser.value?.referralCode || ''
+  }
+  console.log('currentUserForGraph computed:', result)
+  return result
+})
+
+const allDownlineMembers = computed(() => {
+  console.log('=== ALL DOWNLINE MEMBERS COMPUTED ===')
+  console.log('level1Members.value:', level1Members.value)
+  console.log('level2Members.value:', level2Members.value)
+  console.log('level3Members.value:', level3Members.value)
+  console.log('level1Members.length:', level1Members.value.length)
+  console.log('level2Members.length:', level2Members.value.length)
+  console.log('level3Members.length:', level3Members.value.length)
+  
+  const result = [
+    ...level1Members.value.map(member => ({
+      ...member,
+      name: member.name,
+      fullName: member.name,
+      level: member.userLevel,
+      networkLevel: 1
+    })),
+    ...level2Members.value.map(member => ({
+      ...member,
+      name: member.name,
+      fullName: member.name,
+      level: member.userLevel,
+      networkLevel: 2
+    })),
+    ...level3Members.value.map(member => ({
+      ...member,
+      name: member.name,
+      fullName: member.name,
+      level: member.userLevel,
+      networkLevel: 3
+    }))
+  ]
+  console.log('allDownlineMembers computed result:', result)
+  console.log('allDownlineMembers result length:', result.length)
+  return result
+})
 </script>

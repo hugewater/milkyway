@@ -32,6 +32,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Random;
 import com.app6768688.util.PasswordUtil;
 
 @Path("/bw-api")
@@ -2069,5 +2070,102 @@ public class BigWaterResource {
                     .entity(response)
                     .build();
         }
+    }
+
+    @POST
+    @Path("/users/{userId}/add-downline")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response addDownline(@PathParam("userId") Long userId, Map<String, Object> downlineData) {
+        try {
+            String email = (String) downlineData.get("email");
+            String firstName = (String) downlineData.get("firstName");
+            String lastName = (String) downlineData.get("lastName");
+            String phone = (String) downlineData.get("phone");
+            String password = (String) downlineData.get("password");
+            String referralCode = (String) downlineData.get("referralCode");
+            
+            if (email == null || email.trim().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("success", false, "error", "Email is required"))
+                        .build();
+            }
+            
+            if (password == null || password.trim().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("success", false, "error", "Password is required"))
+                        .build();
+            }
+            
+            // Check if email already exists
+            if (userService.findByEmail(email).isPresent()) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(Map.of("success", false, "error", "User with this email already exists"))
+                        .build();
+            }
+            
+            // Validate referralCode from frontend
+            if (referralCode == null || referralCode.trim().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("success", false, "error", "Referral code is required"))
+                        .build();
+            }
+            
+            // Use the referralCode directly from frontend to boost performance
+            // No need to query database for referrer user
+            String referredByCode = referralCode;
+            
+            // Use the provided password
+            String passwordHash = passwordUtil.hashPassword(password);
+            
+            // Create the new downline user
+            User newDownline = userService.createUser(email, passwordHash, firstName, lastName, phone, referredByCode);
+            
+            // Set default values for new downline
+            newDownline.setRole(User.UserRole.SUBSCRIBER);
+            // Make new member ACTIVE by default
+            newDownline.setStatus(User.UserStatus.ACTIVE);
+            newDownline.setLevel(User.UserLevel.CHIEF);
+            
+            // Update the user with all fields
+            newDownline = userService.updateUser(newDownline);
+            
+            // TODO: Send invitation email
+            // emailService.sendInvitation(email, firstName, referrer.getFullName());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", newDownline);
+            response.put("message", "Downline added successfully");
+            
+            return Response.status(Response.Status.CREATED)
+                    .entity(response)
+                    .build();
+                    
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(response)
+                    .build();
+        }
+    }
+
+    /**
+     * Generate a temporary password for new users
+     */
+    private String generateTempPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder sb = new StringBuilder();
+        Random random = new Random();
+        
+        // Generate 8-character password
+        for (int i = 0; i < 8; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        
+        return sb.toString();
     }
 }

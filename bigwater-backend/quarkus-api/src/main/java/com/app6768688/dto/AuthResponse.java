@@ -61,6 +61,7 @@ public class AuthResponse {
         private String lastName;
         private String role;
         private String status;
+        private String referralCode;
         
         public UserInfo() {}
         
@@ -71,6 +72,16 @@ public class AuthResponse {
             this.lastName = lastName;
             this.role = role;
             this.status = status;
+        }
+        
+        public UserInfo(Long id, String email, String firstName, String lastName, String role, String status, String referralCode) {
+            this.id = id;
+            this.email = email;
+            this.firstName = firstName;
+            this.lastName = lastName;
+            this.role = role;
+            this.status = status;
+            this.referralCode = referralCode;
         }
         
         // Getters and Setters
@@ -120,6 +131,14 @@ public class AuthResponse {
         
         public void setStatus(String status) {
             this.status = status;
+        }
+        
+        public String getReferralCode() {
+            return referralCode;
+        }
+        
+        public void setReferralCode(String referralCode) {
+            this.referralCode = referralCode;
         }
     }
 }

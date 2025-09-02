@@ -12,7 +12,7 @@ INSERT INTO users (
     referred_by_code
 ) VALUES (
     'company@bigwater.com',
-    'jGl25bVBBBW96Qi9Te4V37Fnqchz/Eu4qB9vKrRIqRg=', -- SHA-256 hash of 'company123'
+    '5EZ3F7u6Jt7TpRa96eWY5SR/ZQg7wFLzV1U=', -- QCEncryptor hash of 'company123'
     'BigWater',
     'Company',
     '+1234567890',

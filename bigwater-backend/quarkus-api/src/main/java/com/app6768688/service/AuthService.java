@@ -62,7 +62,8 @@ public class AuthService {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getRole().name(),
-                user.getStatus().name()
+                user.getStatus().name(),
+                user.getReferralCode()
             );
             
             return new AuthResponse(true, "Registration successful", token, userInfo);
@@ -101,7 +102,8 @@ public class AuthService {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getRole().name(),
-                user.getStatus().name()
+                user.getStatus().name(),
+                user.getReferralCode()
             );
             
             return new AuthResponse(true, "Login successful", token, userInfo);
@@ -144,7 +146,8 @@ public class AuthService {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getRole().name(),
-                user.getStatus().name()
+                user.getStatus().name(),
+                user.getReferralCode()
             );
             
             return new AuthResponse(true, "Token is valid", token, userInfo);

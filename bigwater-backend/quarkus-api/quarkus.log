@@ -1,0 +1,32 @@
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.fusesource.jansi.internal.JansiLoader in an unnamed module (file:/Users/superman/.m2/wrapper/dists/apache-maven-3.9.9-bin/33b4b2b4/apache-maven-3.9.9/lib/jansi-2.4.1.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.google.common.util.concurrent.AbstractFuture$UnsafeAtomicHelper (file:/Users/superman/.m2/wrapper/dists/apache-maven-3.9.9-bin/33b4b2b4/apache-maven-3.9.9/lib/guava-33.2.1-jre.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.common.util.concurrent.AbstractFuture$UnsafeAtomicHelper
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.app6768688:quarkus-api >---------------------
+[INFO] Building quarkus-api 1.0.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- quarkus:3.25.4:dev (default-cli) @ quarkus-api ---
+[INFO] Invoking resources:3.3.1:resources (default-resources) @ quarkus-api
+[INFO] Copying 11 resources from src/main/resources to target/classes
+[INFO] Invoking quarkus:3.25.4:generate-code (default) @ quarkus-api
+[INFO] Invoking compiler:3.14.0:compile (default-compile) @ quarkus-api
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] Invoking resources:3.3.1:testResources (default-testResources) @ quarkus-api
+[INFO] skip non existing resourceDirectory /Users/superman/hugewater-milkyway/dev/bigwater-backend/quarkus-api/src/test/resources
+[INFO] Invoking quarkus:3.25.4:generate-code-tests (default) @ quarkus-api
+[INFO] Invoking compiler:3.14.0:testCompile (default-testCompile) @ quarkus-api
+[INFO] Nothing to compile - all classes are up to date.
+Listening for transport dt_socket at address: 5005
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::allocateMemory has been called by io.netty.util.internal.PlatformDependent0$2 (file:/Users/superman/.m2/repository/io/netty/netty-common/4.1.124.Final/netty-common-4.1.124.Final.jar)
+WARNING: Please consider reporting this to the maintainers of class io.netty.util.internal.PlatformDependent0$2
+WARNING: sun.misc.Unsafe::allocateMemory will be removed in a future release

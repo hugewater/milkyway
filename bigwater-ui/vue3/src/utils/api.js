@@ -254,6 +254,13 @@ class ApiService {
     return this.request(`/users/${userId}/network`)
   }
 
+  async addDownline(userId, downlineData) {
+    return this.request(`/users/${userId}/add-downline`, {
+      method: 'POST',
+      body: JSON.stringify(downlineData)
+    })
+  }
+
   // Health check
   async healthCheck() {
     return this.request('/health')
@@ -307,6 +314,7 @@ export const withdrawFromWallet = apiService.withdrawFromWallet.bind(apiService)
 export const getTransactionsByUserId = apiService.getTransactionsByUserId.bind(apiService)
 export const getTransactionsByWalletId = apiService.getTransactionsByWalletId.bind(apiService)
 export const getUserNetwork = apiService.getUserNetwork.bind(apiService)
+export const addDownline = apiService.addDownline.bind(apiService)
 export const healthCheck = apiService.healthCheck.bind(apiService)
 export const getVersion = apiService.getVersion.bind(apiService)
 
