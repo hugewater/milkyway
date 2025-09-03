@@ -76,6 +76,91 @@ public class BigWaterResource {
     }
 
     @GET
+    @Path("/transactions")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response listTransactions(@QueryParam("offset") Integer offset,
+                                     @QueryParam("limit") Integer limit,
+                                     @QueryParam("sort") String sort,
+                                     @QueryParam("order") String order,
+                                     @QueryParam("status") String status,
+                                     @QueryParam("q") String q) {
+        try (Connection conn = dataSource.getConnection()) {
+            String base = "SELECT SQL_CALC_FOUND_ROWS t.id, t.wallet_id, t.user_id, t.to_wallet_id, t.amount_usdt, t.status, t.description, t.created_at, " +
+                          "wf.wallet_address AS from_address, wt.wallet_address AS to_address " +
+                          "FROM transactions t " +
+                          "LEFT JOIN usdt_wallets wf ON wf.id = t.wallet_id " +
+                          "LEFT JOIN usdt_wallets wt ON wt.id = t.to_wallet_id " +
+                          "WHERE 1=1";
+            StringBuilder sql = new StringBuilder(base);
+            java.util.List<Object> params = new java.util.ArrayList<>();
+            if (status != null && !status.isEmpty()) { sql.append(" AND status = ?"); params.add(status); }
+            if (q != null && !q.isEmpty()) { sql.append(" AND description LIKE ?"); params.add("%"+q+"%"); }
+            String s = (sort==null||sort.isEmpty())?"created_at":sort; String o=(order==null||order.isEmpty())?"desc":order;
+            sql.append(" ORDER BY ").append(s).append(" ").append(o.equalsIgnoreCase("asc")?"asc":"desc");
+            int off = offset!=null?offset:0; int lim = limit!=null?limit:50;
+            sql.append(" LIMIT ").append(lim).append(" OFFSET ").append(off);
+            try (PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+                int idx=1; for (Object p: params) { stmt.setObject(idx++, p); }
+                ResultSet rs = stmt.executeQuery();
+                java.util.List<java.util.Map<String,Object>> rows = new java.util.ArrayList<>();
+                while (rs.next()) {
+                    java.util.Map<String,Object> row = new java.util.HashMap<>();
+                    row.put("id", rs.getLong("id"));
+                    row.put("walletId", rs.getObject("wallet_id"));
+                    row.put("userId", rs.getObject("user_id"));
+                    row.put("toWalletId", rs.getObject("to_wallet_id"));
+                    row.put("amountUsdt", rs.getBigDecimal("amount_usdt"));
+                    row.put("status", rs.getString("status"));
+                    row.put("description", rs.getString("description"));
+                    row.put("createdAt", rs.getTimestamp("created_at"));
+                    row.put("fromWalletAddress", rs.getString("from_address"));
+                    row.put("toWalletAddress", rs.getString("to_address"));
+                    rows.add(row);
+                }
+                long total = 0;
+                try (PreparedStatement stmt2 = conn.prepareStatement("SELECT FOUND_ROWS()")) {
+                    ResultSet rs2 = stmt2.executeQuery(); if (rs2.next()) total = rs2.getLong(1);
+                }
+                return Response.ok(java.util.Map.of("success", true, "data", rows, "total", total, "offset", off, "limit", lim)).build();
+            }
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
+    }
+
+    @PUT
+    @Path("/transactions/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updateTransaction(@PathParam("id") Long id, java.util.Map<String,Object> body) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("UPDATE transactions SET status = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")) {
+            String status = (String) body.get("status");
+            String description = (String) body.get("description");
+            stmt.setString(1, status);
+            stmt.setString(2, description);
+            stmt.setLong(3, id);
+            int n = stmt.executeUpdate();
+            return Response.ok(java.util.Map.of("success", n>0)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
+    }
+
+    @DELETE
+    @Path("/transactions/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteTransaction(@PathParam("id") Long id) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("DELETE FROM transactions WHERE id = ?")) {
+            stmt.setLong(1, id);
+            int n = stmt.executeUpdate();
+            return Response.ok(java.util.Map.of("success", n>0)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
+    }
+    @GET
     @Path("/health")
     @Produces(MediaType.APPLICATION_JSON)
     public Response health() {
@@ -98,6 +183,208 @@ public class BigWaterResource {
         response.put("database", "MySQL + JDBC");
         
         return Response.ok(response).build();
+    }
+
+    // ==== AI Agents CRUD ====
+    @GET
+    @Path("/ai/agents")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response listAiAgents(@QueryParam("q") String q,
+                                 @QueryParam("status") String status,
+                                 @QueryParam("enabled") Boolean enabled) {
+        StringBuilder sql = new StringBuilder("SELECT id, name, provider, model, api_key, webhook_url, role, enabled, status, description, created_at, updated_at FROM ai_agents WHERE 1=1");
+        java.util.List<Object> params = new java.util.ArrayList<>();
+        if (q != null && !q.isEmpty()) { sql.append(" AND (name LIKE ? OR provider LIKE ? OR model LIKE ?)"); params.add("%"+q+"%"); params.add("%"+q+"%"); params.add("%"+q+"%"); }
+        if (status != null && !status.isEmpty()) { sql.append(" AND status = ?"); params.add(status.toUpperCase()); }
+        if (enabled != null) { sql.append(" AND enabled = ?"); params.add(enabled ? 1 : 0); }
+        sql.append(" ORDER BY created_at DESC");
+        try (Connection conn = dataSource.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+            int i=1; for (Object p: params) stmt.setObject(i++, p);
+            ResultSet rs = stmt.executeQuery();
+            java.util.List<java.util.Map<String,Object>> rows = new java.util.ArrayList<>();
+            while (rs.next()) {
+                java.util.Map<String,Object> row = new java.util.HashMap<>();
+                row.put("id", rs.getLong("id"));
+                row.put("name", rs.getString("name"));
+                row.put("provider", rs.getString("provider"));
+                row.put("model", rs.getString("model"));
+                row.put("apiKey", rs.getString("api_key"));
+                row.put("webhookUrl", rs.getString("webhook_url"));
+                row.put("role", rs.getString("role"));
+                row.put("enabled", rs.getBoolean("enabled"));
+                row.put("status", rs.getString("status"));
+                row.put("description", rs.getString("description"));
+                row.put("createdAt", rs.getTimestamp("created_at"));
+                row.put("updatedAt", rs.getTimestamp("updated_at"));
+                rows.add(row);
+            }
+            return Response.ok(java.util.Map.of("success", true, "data", rows)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
+    }
+
+    @POST
+    @Path("/ai/agents")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createAiAgent(java.util.Map<String,Object> body) {
+        String sql = "INSERT INTO ai_agents (name, provider, model, api_key, webhook_url, role, enabled, status, description) VALUES (?,?,?,?,?,?,?,?,?)";
+        try (Connection conn = dataSource.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setString(1, (String) body.getOrDefault("name", ""));
+            stmt.setString(2, (String) body.getOrDefault("provider", ""));
+            stmt.setString(3, (String) body.getOrDefault("model", ""));
+            if (body.get("apiKey") != null && !((String)body.get("apiKey")).isEmpty()) stmt.setString(4, (String) body.get("apiKey")); else stmt.setNull(4, java.sql.Types.VARCHAR);
+            if (body.get("webhookUrl") != null && !((String)body.get("webhookUrl")).isEmpty()) stmt.setString(5, (String) body.get("webhookUrl")); else stmt.setNull(5, java.sql.Types.VARCHAR);
+            if (body.get("role") != null && !((String)body.get("role")).isEmpty()) stmt.setString(6, (String) body.get("role")); else stmt.setNull(6, java.sql.Types.VARCHAR);
+            stmt.setBoolean(7, body.get("enabled") == null ? true : Boolean.parseBoolean(body.get("enabled").toString()));
+            stmt.setString(8, body.get("status") == null ? "ACTIVE" : String.valueOf(body.get("status")).toUpperCase());
+            if (body.get("description") != null && !String.valueOf(body.get("description")).isEmpty()) stmt.setString(9, String.valueOf(body.get("description"))); else stmt.setNull(9, java.sql.Types.LONGVARCHAR);
+            stmt.executeUpdate();
+            ResultSet rs = stmt.getGeneratedKeys();
+            Long id = null; if (rs.next()) id = rs.getLong(1);
+            return Response.status(Response.Status.CREATED).entity(java.util.Map.of("success", true, "data", java.util.Map.of("id", id))).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
+    }
+
+    @PUT
+    @Path("/ai/agents/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updateAiAgent(@PathParam("id") Long id, java.util.Map<String,Object> body) {
+        String sql = "UPDATE ai_agents SET name=?, provider=?, model=?, api_key=?, webhook_url=?, role=?, enabled=?, status=?, description=?, updated_at=CURRENT_TIMESTAMP WHERE id=?";
+        try (Connection conn = dataSource.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, (String) body.getOrDefault("name", ""));
+            stmt.setString(2, (String) body.getOrDefault("provider", ""));
+            stmt.setString(3, (String) body.getOrDefault("model", ""));
+            if (body.get("apiKey") != null && !((String)body.get("apiKey")).isEmpty()) stmt.setString(4, (String) body.get("apiKey")); else stmt.setNull(4, java.sql.Types.VARCHAR);
+            if (body.get("webhookUrl") != null && !((String)body.get("webhookUrl")).isEmpty()) stmt.setString(5, (String) body.get("webhookUrl")); else stmt.setNull(5, java.sql.Types.VARCHAR);
+            if (body.get("role") != null && !((String)body.get("role")).isEmpty()) stmt.setString(6, (String) body.get("role")); else stmt.setNull(6, java.sql.Types.VARCHAR);
+            stmt.setBoolean(7, body.get("enabled") == null ? true : Boolean.parseBoolean(body.get("enabled").toString()));
+            stmt.setString(8, body.get("status") == null ? "ACTIVE" : String.valueOf(body.get("status")).toUpperCase());
+            if (body.get("description") != null && !String.valueOf(body.get("description")).isEmpty()) stmt.setString(9, String.valueOf(body.get("description"))); else stmt.setNull(9, java.sql.Types.LONGVARCHAR);
+            stmt.setLong(10, id);
+            int n = stmt.executeUpdate();
+            return Response.ok(java.util.Map.of("success", n>0)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
+    }
+
+    @DELETE
+    @Path("/ai/agents/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteAiAgent(@PathParam("id") Long id) {
+        String sql = "DELETE FROM ai_agents WHERE id=?";
+        try (Connection conn = dataSource.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, id);
+            int n = stmt.executeUpdate();
+            return Response.ok(java.util.Map.of("success", n>0)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
+    }
+
+    // ==== AI Chats CRUD ====
+    @GET
+    @Path("/ai/chats")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response listAiChats(@QueryParam("q") String q,
+                                @QueryParam("agentId") Long agentId,
+                                @QueryParam("status") String status) {
+        StringBuilder sql = new StringBuilder(
+            "SELECT c.id, c.agent_id, c.user_id, c.title, c.last_message, c.status, c.created_at, c.updated_at, " +
+            "a.name AS agent_name, a.provider AS agent_provider, a.model AS agent_model " +
+            "FROM ai_chats c LEFT JOIN ai_agents a ON a.id = c.agent_id WHERE 1=1");
+        java.util.List<Object> params = new java.util.ArrayList<>();
+        if (q != null && !q.isEmpty()) { sql.append(" AND (c.title LIKE ? OR c.last_message LIKE ?)"); params.add("%"+q+"%"); params.add("%"+q+"%"); }
+        if (agentId != null) { sql.append(" AND c.agent_id = ?"); params.add(agentId); }
+        if (status != null && !status.isEmpty()) { sql.append(" AND c.status = ?"); params.add(status.toUpperCase()); }
+        sql.append(" ORDER BY c.updated_at DESC");
+        try (Connection conn = dataSource.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+            int i=1; for (Object p: params) stmt.setObject(i++, p);
+            ResultSet rs = stmt.executeQuery();
+            java.util.List<java.util.Map<String,Object>> rows = new java.util.ArrayList<>();
+            while (rs.next()) {
+                java.util.Map<String,Object> row = new java.util.HashMap<>();
+                row.put("id", rs.getLong("id"));
+                row.put("agentId", rs.getLong("agent_id"));
+                row.put("userId", rs.getObject("user_id"));
+                row.put("title", rs.getString("title"));
+                row.put("lastMessage", rs.getString("last_message"));
+                row.put("status", rs.getString("status"));
+                row.put("createdAt", rs.getTimestamp("created_at"));
+                row.put("updatedAt", rs.getTimestamp("updated_at"));
+                row.put("agentName", rs.getString("agent_name"));
+                row.put("agentProvider", rs.getString("agent_provider"));
+                row.put("agentModel", rs.getString("agent_model"));
+                rows.add(row);
+            }
+            return Response.ok(java.util.Map.of("success", true, "data", rows)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
+    }
+
+    @POST
+    @Path("/ai/chats")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createAiChat(java.util.Map<String,Object> body) {
+        String sql = "INSERT INTO ai_chats (agent_id, user_id, title, last_message, status) VALUES (?,?,?,?,?)";
+        try (Connection conn = dataSource.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            Object agentIdObj = body.get("agentId");
+            if (agentIdObj == null) return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", "agentId is required")).build();
+            Long agentId = Long.valueOf(agentIdObj.toString());
+            stmt.setLong(1, agentId);
+            if (body.get("userId") != null) stmt.setObject(2, body.get("userId")); else stmt.setNull(2, java.sql.Types.BIGINT);
+            stmt.setString(3, String.valueOf(body.getOrDefault("title", "New Chat")));
+            if (body.get("lastMessage") != null) stmt.setString(4, String.valueOf(body.get("lastMessage"))); else stmt.setNull(4, java.sql.Types.LONGVARCHAR);
+            stmt.setString(5, String.valueOf(body.getOrDefault("status", "ACTIVE")).toUpperCase());
+            stmt.executeUpdate();
+            ResultSet rs = stmt.getGeneratedKeys(); Long id=null; if (rs.next()) id=rs.getLong(1);
+            return Response.status(Response.Status.CREATED).entity(java.util.Map.of("success", true, "data", java.util.Map.of("id", id))).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
+    }
+
+    @PUT
+    @Path("/ai/chats/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updateAiChat(@PathParam("id") Long id, java.util.Map<String,Object> body) {
+        String sql = "UPDATE ai_chats SET agent_id=?, title=?, last_message=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?";
+        try (Connection conn = dataSource.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            Object agentIdObj = body.get("agentId");
+            if (agentIdObj == null) return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", "agentId is required")).build();
+            Long agentId = Long.valueOf(agentIdObj.toString());
+            stmt.setLong(1, agentId);
+            stmt.setString(2, String.valueOf(body.getOrDefault("title", "Untitled")));
+            if (body.get("lastMessage") != null) stmt.setString(3, String.valueOf(body.get("lastMessage"))); else stmt.setNull(3, java.sql.Types.LONGVARCHAR);
+            stmt.setString(4, String.valueOf(body.getOrDefault("status", "ACTIVE")).toUpperCase());
+            stmt.setLong(5, id);
+            int n = stmt.executeUpdate();
+            return Response.ok(java.util.Map.of("success", n>0)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
+    }
+
+    @DELETE
+    @Path("/ai/chats/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteAiChat(@PathParam("id") Long id) {
+        String sql = "DELETE FROM ai_chats WHERE id=?";
+        try (Connection conn = dataSource.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, id);
+            int n = stmt.executeUpdate();
+            return Response.ok(java.util.Map.of("success", n>0)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
+        }
     }
 
     @GET
@@ -222,6 +509,163 @@ public class BigWaterResource {
     }
 
     @POST
+    @Path("/wallets/payments")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response recordWalletPayment(Map<String, Object> payload) {
+        try {
+            String fromAddress = (String) payload.get("fromAddress");
+            Object toWalletIdObj = payload.get("toWalletId");
+            Object amountObj = payload.get("amount");
+            if (fromAddress == null || fromAddress.trim().isEmpty() || toWalletIdObj == null || amountObj == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("success", false, "error", "fromAddress, toWalletId, amount are required"))
+                    .build();
+            }
+            Long toWalletId = Long.valueOf(toWalletIdObj.toString());
+            BigDecimal amount = new BigDecimal(amountObj.toString());
+            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("success", false, "error", "Amount must be positive"))
+                    .build();
+            }
+
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(
+                   "INSERT INTO wallet_payments (from_address, to_wallet_id, amount, created_at) VALUES (?,?,?,CURRENT_TIMESTAMP)",
+                   Statement.RETURN_GENERATED_KEYS)) {
+                stmt.setString(1, fromAddress);
+                stmt.setLong(2, toWalletId);
+                stmt.setBigDecimal(3, amount);
+                stmt.executeUpdate();
+                ResultSet rs = stmt.getGeneratedKeys();
+                Long id = null;
+                if (rs.next()) id = rs.getLong(1);
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("data", Map.of("id", id));
+                response.put("message", "Payment recorded");
+                return Response.status(Response.Status.CREATED).entity(response).build();
+            }
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity(Map.of("success", false, "error", e.getMessage()))
+                .build();
+        }
+    }
+
+    @GET
+    @Path("/wallets/payments")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response listWalletPayments(@QueryParam("toWalletId") Long toWalletId) {
+        try {
+            String sql = "SELECT id, from_address, to_wallet_id, amount, created_at FROM wallet_payments" +
+                         (toWalletId != null ? " WHERE to_wallet_id = ? ORDER BY created_at DESC" : " ORDER BY created_at DESC");
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                if (toWalletId != null) stmt.setLong(1, toWalletId);
+                ResultSet rs = stmt.executeQuery();
+                List<Map<String, Object>> rows = new ArrayList<>();
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", rs.getLong("id"));
+                    row.put("fromAddress", rs.getString("from_address"));
+                    row.put("toWalletId", rs.getLong("to_wallet_id"));
+                    row.put("amount", rs.getBigDecimal("amount"));
+                    row.put("createdAt", rs.getTimestamp("created_at").toInstant().toString());
+                    rows.add(row);
+                }
+                return Response.ok(Map.of("success", true, "data", rows, "count", rows.size())).build();
+            }
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity(Map.of("success", false, "error", e.getMessage()))
+                .build();
+        }
+    }
+
+    // Reuse transactions table for self-reported subscription payments
+    @POST
+    @Path("/transactions/self-report")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response recordSelfReportedTransaction(Map<String, Object> payload) {
+        try {
+            String fromAddress = (String) payload.get("fromAddress");
+            Object toWalletIdObj = payload.get("toWalletId");
+            Object amountObj = payload.get("amount");
+            if (fromAddress == null || fromAddress.trim().isEmpty() || toWalletIdObj == null || amountObj == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("success", false, "error", "fromAddress, toWalletId, amount are required"))
+                    .build();
+            }
+            Long toWalletId = Long.valueOf(toWalletIdObj.toString());
+            BigDecimal amount = new BigDecimal(amountObj.toString());
+            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("success", false, "error", "Amount must be positive"))
+                    .build();
+            }
+
+            // Ensure target wallet exists
+            java.util.Optional<com.app6768688.model.UsdtWallet> toWalletOpt = walletService.findById(toWalletId);
+            if (toWalletOpt.isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("success", false, "error", "Target wallet not found"))
+                    .build();
+            }
+            // Optional: from wallet id (the wallet clicked by user)
+            Long fromWalletId = null;
+            Object fromWalletIdObj = payload.get("fromWalletId");
+            if (fromWalletIdObj != null) {
+                try { fromWalletId = Long.valueOf(fromWalletIdObj.toString()); } catch (Exception ignore) {}
+            }
+
+            // Determine the actor user (member) from the source wallet
+            Long userId;
+            if (fromWalletId != null) {
+                java.util.Optional<com.app6768688.model.UsdtWallet> fromWalletOpt = walletService.findById(fromWalletId);
+                if (fromWalletOpt.isPresent()) {
+                    userId = fromWalletOpt.get().getUserId();
+                } else {
+                    // fallback to company wallet owner (should not happen if UI passes valid fromWalletId)
+                    userId = toWalletOpt.get().getUserId();
+                }
+            } else {
+                // fallback if no fromWalletId provided
+                userId = toWalletOpt.get().getUserId();
+            }
+
+            String clientDesc = (String) payload.get("description");
+            String description = (clientDesc != null && !clientDesc.trim().isEmpty())
+                ? clientDesc.trim()
+                : ("SUBSCRIPTION from: " + fromAddress);
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(
+                   "INSERT INTO transactions (wallet_id, user_id, to_wallet_id, amount_usdt, status, description, created_at) VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)",
+                   Statement.RETURN_GENERATED_KEYS)) {
+                // 仅使用 wallet_id 作为来源钱包
+                if (fromWalletId != null) stmt.setLong(1, fromWalletId); else stmt.setNull(1, java.sql.Types.BIGINT);
+                stmt.setLong(2, userId);
+                stmt.setLong(3, toWalletId);
+                stmt.setBigDecimal(4, amount);
+                stmt.setString(5, "PENDING");
+                stmt.setString(6, description);
+                stmt.executeUpdate();
+                ResultSet rs = stmt.getGeneratedKeys();
+                Long id = null;
+                if (rs.next()) id = rs.getLong(1);
+                return Response.status(Response.Status.CREATED)
+                    .entity(Map.of("success", true, "data", Map.of("id", id), "message", "Payment recorded"))
+                    .build();
+            }
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity(Map.of("success", false, "error", e.getMessage()))
+                .build();
+        }
+    }
+
     @Path("/users")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -298,10 +742,12 @@ public class BigWaterResource {
                     user.setPhone((String) userData.get("phone"));
                 }
                 if (userData.containsKey("role")) {
-                    user.setRole(User.UserRole.valueOf((String) userData.get("role")));
+                    String roleStr = (String) userData.get("role");
+                    if (roleStr != null) user.setRole(User.UserRole.valueOf(roleStr.toUpperCase()));
                 }
                 if (userData.containsKey("status")) {
-                    user.setStatus(User.UserStatus.valueOf((String) userData.get("status")));
+                    String statusStr = (String) userData.get("status");
+                    if (statusStr != null) user.setStatus(User.UserStatus.valueOf(statusStr.toUpperCase()));
                 }
                 if (userData.containsKey("level")) {
                     user.setLevel(User.UserLevel.fromString((String) userData.get("level")));
@@ -834,13 +1280,25 @@ public class BigWaterResource {
                     .entity(response)
                     .build();
         } catch (Exception e) {
+            // Detect duplicate wallet address and return friendly message
+            String message = e.getMessage() != null ? e.getMessage() : "";
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                if (cause.getMessage() != null) message = cause.getMessage();
+                cause = cause.getCause();
+            }
+            String msgLower = message.toLowerCase();
+            if (msgLower.contains("duplicate") && (msgLower.contains("wallet_address") || (msgLower.contains("wallet") && msgLower.contains("address")))) {
+                Map<String, Object> resp = new HashMap<>();
+                resp.put("success", false);
+                resp.put("error", "Wallet address already exists");
+                return Response.status(Response.Status.CONFLICT).entity(resp).build();
+            }
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("error", e.getMessage());
-            
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(response)
-                    .build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
         }
     }
 
@@ -959,13 +1417,25 @@ public class BigWaterResource {
             
             return Response.ok(response).build();
         } catch (Exception e) {
+            // Detect duplicate wallet address and return friendly message
+            String message = e.getMessage() != null ? e.getMessage() : "";
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                if (cause.getMessage() != null) message = cause.getMessage();
+                cause = cause.getCause();
+            }
+            String msgLower = message.toLowerCase();
+            if (msgLower.contains("duplicate") && (msgLower.contains("wallet_address") || (msgLower.contains("wallet") && msgLower.contains("address")))) {
+                Map<String, Object> resp = new HashMap<>();
+                resp.put("success", false);
+                resp.put("error", "Wallet address already exists");
+                return Response.status(Response.Status.CONFLICT).entity(resp).build();
+            }
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("error", e.getMessage());
-            
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(response)
-                    .build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
         }
     }
 
@@ -1409,21 +1879,41 @@ public class BigWaterResource {
     @Path("/transactions/user/{userId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTransactionsByUserId(@PathParam("userId") Long userId) {
-        try {
-            List<Transaction> transactions = transactionService.getTransactionsByUserId(userId);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", transactions);
-            response.put("count", transactions.size());
-            
-            return Response.ok(response).build();
+        // Include legacy records without user_id by looking up user's wallets
+        String sql =
+            "SELECT t.id, t.wallet_id, t.to_wallet_id, t.amount_usdt, t.status, t.description, t.created_at, " +
+            "wf.wallet_address AS from_address, wt.wallet_address AS to_address " +
+            "FROM transactions t " +
+            "LEFT JOIN usdt_wallets wf ON wf.id = t.wallet_id " +
+            "LEFT JOIN usdt_wallets wt ON wt.id = t.to_wallet_id " +
+            "WHERE t.user_id = ? " +
+            "   OR t.wallet_id IN (SELECT w.id FROM usdt_wallets w WHERE w.user_id = ?) " +
+            "   OR t.to_wallet_id IN (SELECT w2.id FROM usdt_wallets w2 WHERE w2.user_id = ?) " +
+            "ORDER BY t.created_at DESC";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, userId);
+            stmt.setLong(2, userId);
+            stmt.setLong(3, userId);
+            ResultSet rs = stmt.executeQuery();
+            List<Map<String, Object>> rows = new ArrayList<>();
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("id", rs.getLong("id"));
+                row.put("walletId", rs.getObject("wallet_id"));
+                row.put("toWalletId", rs.getObject("to_wallet_id"));
+                row.put("amountUsdt", rs.getBigDecimal("amount_usdt"));
+                row.put("status", rs.getString("status"));
+                row.put("description", rs.getString("description"));
+                row.put("createdAt", rs.getTimestamp("created_at"));
+                row.put("fromWalletAddress", rs.getString("from_address"));
+                row.put("toWalletAddress", rs.getString("to_address"));
+                rows.add(row);
+            }
+            return Response.ok(Map.of("success", true, "data", rows, "count", rows.size())).build();
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(response)
+                    .entity(Map.of("success", false, "error", e.getMessage()))
                     .build();
         }
     }

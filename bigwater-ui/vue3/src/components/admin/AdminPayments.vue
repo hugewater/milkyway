@@ -307,7 +307,7 @@ const showViewModal = ref(false)
 const showEditModal = ref(false)
 const editErrorMsg = ref('')
 const selectedWallet = ref(null)
-const editWalletForm = ref({ id: null, walletName: '', walletAddress: '', walletType: 'MAIN' })
+const editWalletForm = ref({ id: null, walletName: '', walletAddress: '', walletType: 'COMPANY' })
 const openActionId = ref(null)
 const menuPos = ref({ top: 0, left: 0 })
 
@@ -411,7 +411,7 @@ const openEditWallet = (w) => {
     id: w.id,
     walletName: w.walletName || '',
     walletAddress: w.walletAddress || '',
-    walletType: w.walletType || 'MAIN'
+    walletType: w.walletType || 'COMPANY'
   }
   editErrorMsg.value = ''
   showEditModal.value = true
@@ -421,10 +421,11 @@ const saveWalletEdit = async () => {
   try {
     const { id, walletName, walletAddress, walletType } = editWalletForm.value
     const payload = {}
-    // Only send non-empty fields to avoid backend validation errors
-    if (walletName && walletName.trim() !== '') payload.walletName = walletName.trim()
-    if (walletAddress && walletAddress.trim() !== '') payload.walletAddress = walletAddress.trim()
-    if (walletType && walletType.trim() !== '') payload.walletType = walletType.trim().toUpperCase()
+    // 统一发送字段，并在为空时发 null，避免后端类型校验问题
+    payload.walletName = walletName && walletName.trim() !== '' ? walletName.trim() : null
+    payload.walletAddress = walletAddress && walletAddress.trim() !== '' ? walletAddress.trim() : null
+    payload.walletType = walletType && walletType.trim() !== '' ? walletType.trim().toUpperCase() : null
+    console.log('PUT /wallets/' + id + ' payload =', payload)
     const resp = await updateWallet(id, payload)
     if (resp && resp.success) {
       // Update local list
@@ -436,6 +437,7 @@ const saveWalletEdit = async () => {
       editErrorMsg.value = ''
     }
   } catch (e) {
+    console.error('saveWalletEdit error:', e)
     editErrorMsg.value = e?.message || 'Update failed'
   }
 }

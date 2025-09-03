@@ -94,12 +94,14 @@ export function logout() {
 
 // Check if user is admin
 export function isAdmin() {
-  return currentUser.value && currentUser.value.role === 'ADMIN'
+  const role = currentUser.value && currentUser.value.role ? String(currentUser.value.role).toUpperCase() : null
+  return role === 'ADMIN' || role === 'SUPER_ADMIN'
 }
 
 // Check if user is super admin
 export function isSuperAdmin() {
-  return currentUser.value && currentUser.value.role === 'SUPER_ADMIN'
+  const role = currentUser.value && currentUser.value.role ? String(currentUser.value.role).toUpperCase() : null
+  return role === 'SUPER_ADMIN'
 }
 
 // Get user role
@@ -128,7 +130,8 @@ export function hasPermission(permission) {
   if (!currentUser.value) return false
   
   // Add permission logic based on user role
-  switch (currentUser.value.role) {
+  const role = currentUser.value.role ? String(currentUser.value.role).toUpperCase() : ''
+  switch (role) {
     case 'SUPER_ADMIN':
       return true // Super admin has all permissions
     case 'ADMIN':

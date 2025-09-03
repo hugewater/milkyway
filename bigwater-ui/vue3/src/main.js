@@ -26,6 +26,10 @@ import AdminPayments from './components/admin/AdminPayments.vue'
 import AdminCertificates from './components/admin/AdminCertificates.vue'
 import Certificates from './components/user/Certificates.vue'
 import AdminMembers from './components/admin/AdminMembers.vue'
+import AdminTransactions from './components/admin/AdminTransactions.vue'
+import MyTransactions from './components/user/MyTransactions.vue'
+import AdminAiAgents from './components/admin/AdminAiAgents.vue'
+import AdminAiChats from './components/admin/AdminAiChats.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -40,6 +44,7 @@ const routes = [
   { path: '/my-winnings', component: MyWinnings },
   { path: '/winning-numbers', component: WinningNumbers },
   { path: '/certificates', component: Certificates },
+  { path: '/my-transactions', component: MyTransactions },
   { path: '/my-account', component: MyAccount },
   { path: '/settings', component: Settings },
   { path: '/admin/journals', component: () => import('./components/admin/AdminJournals.vue') },
@@ -48,7 +53,11 @@ const routes = [
   { path: '/admin/payments', component: AdminPayments },
   { path: '/admin/certificates', component: AdminCertificates },
   { path: '/admin/admin-manager', component: () => import('./components/admin/AdminManager.vue') },
-  { path: '/admin/members', component: AdminMembers }
+  { path: '/admin/members', component: AdminMembers },
+  { path: '/admin/transactions', component: AdminTransactions }
+  ,{ path: '/admin/ai/agents', component: AdminAiAgents }
+  ,{ path: '/admin/ai/chats', component: AdminAiChats }
+  ,{ path: '/ai/chats', component: AdminAiChats }
 ]
 
 const router = createRouter({

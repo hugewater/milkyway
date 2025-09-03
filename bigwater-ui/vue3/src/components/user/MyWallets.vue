@@ -120,8 +120,10 @@
                              :style="{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }">
                           <div class="py-1">
                             <button @click="openView(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View</button>
-                            <button @click="openEdit(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit Nick Name</button>
+                            <button @click="openPay(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Pay</button>
+                            <button @click="openEdit(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit</button>
                             <button @click="copyAddress(w.walletAddress); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Copy Address</button>
+                            <button @click="toggleStatus(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ w.isActive ? 'Deactivate' : 'Activate' }}</button>
                             <button @click="deleteRow(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Delete</button>
                           </div>
                         </div>
@@ -174,20 +176,8 @@
               </div>
 
               <div>
-                <label for="walletType" class="block text-sm font-medium text-gray-700 mb-2">
-                  Wallet Type
-                </label>
-                <select
-                  id="walletType"
-                  v-model="newWallet.walletType"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-ocean"
-                >
-                  <option value="">Select wallet type</option>
-                  <option value="PERSONAL">Personal</option>
-                  <option value="BUSINESS">Business</option>
-                  <option value="EXCHANGE">Exchange</option>
-                </select>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Wallet Type</label>
+                <input type="text" value="Member" disabled class="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700" />
               </div>
             </div>
 
@@ -230,6 +220,38 @@
     </div>
   </div>
 
+  <!-- Pay Modal -->
+  <div v-if="showPay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+      <h3 class="text-lg font-bold text-deep-ocean mb-4">Record Payment</h3>
+      <form @submit.prevent="submitPay" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Company Wallet (to)</label>
+          <select v-model="payForm.toWalletId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option v-for="cw in companyWallets" :key="cw.id" :value="cw.id">{{ cw.walletName || 'Company Wallet' }} ({{ maskAddress(cw.walletAddress || '') }})</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Your Pay Wallet Address</label>
+          <input v-model="payForm.fromAddress" type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter your wallet address" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Amount (USDT)</label>
+          <input v-model="payForm.amount" type="number" step="0.000001" min="0" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+          <textarea v-model="payForm.description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Add a note (e.g., subscription period, tx hash)"></textarea>
+        </div>
+        <div class="flex justify-end space-x-3 pt-2">
+          <button type="button" @click="showPay = false" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Record</button>
+        </div>
+        <p v-if="payMsg" class="text-sm" :class="payOk ? 'text-green-600' : 'text-red-600'">{{ payMsg }}</p>
+      </form>
+    </div>
+  </div>
+
   <!-- Edit Wallet Modal -->
   <div v-if="showEdit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-2xl p-6 w-full max-w-lg">
@@ -238,6 +260,14 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Nick Name</label>
           <input v-model="editForm.walletName" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+          <input v-model="editForm.walletAddress" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+          <input type="text" value="Member" disabled class="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700" />
         </div>
         <div class="flex justify-end space-x-3 pt-2">
           <button type="button" @click="showEdit = false" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
@@ -256,6 +286,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import { getUserId } from '../../utils/auth.js'
 import apiService from '../../utils/api.js'
+import { toggleWalletStatus } from '../../utils/api.js'
 
 const wallets = ref([])
 const isLoading = ref(false)
@@ -265,14 +296,20 @@ const openActionId = ref(null)
 const menuPos = ref({ top: 0, left: 0 })
 const showView = ref(false)
 const showEdit = ref(false)
+const showPay = ref(false)
 const selected = ref(null)
-const editForm = ref({ id: null, walletName: '' })
+const editForm = ref({ id: null, walletName: '', walletAddress: '', walletType: 'MEMBER' })
 const editErr = ref('')
+const companyWallets = ref([])
+const selectedCompanyWallet = computed(() => companyWallets.value.find(w => w.id === payForm.value.toWalletId) || null)
+const payForm = ref({ fromAddress: '', toWalletId: null, fromWalletId: null, amount: '', description: '' })
+const payMsg = ref('')
+const payOk = ref(false)
 
 const newWallet = ref({
   walletName: '',
   walletAddress: '',
-  walletType: ''
+  walletType: 'MEMBER'
 })
 
 const totalBalance = computed(() => {
@@ -289,6 +326,13 @@ const formatDate = (d) => {
     const dt = typeof d === 'string' && d.length > 10 ? d.slice(0, 19) : d
     return new Date(dt).toLocaleString()
   } catch { return String(d) }
+}
+
+const maskAddress = (addr) => {
+  const s = String(addr || '')
+  if (s.length <= 6) return s
+  const last = s.slice(-6)
+  return 'x'.repeat(s.length - 6) + last
 }
 
 const toggleActions = (id, evt) => {
@@ -314,10 +358,28 @@ const openView = (w) => {
   showView.value = true
 }
 
+const openPay = (w) => {
+  selected.value = w
+  payForm.value = { fromAddress: w.walletAddress || '', toWalletId: null, fromWalletId: w.id, amount: '' }
+  payMsg.value = ''
+  // Ensure we have company wallets to select as target
+  if (companyWallets.value.length === 0) {
+    loadCompanyWallets().then(() => {
+      if (companyWallets.value.length > 0) {
+        payForm.value.toWalletId = companyWallets.value[0].id
+      }
+      showPay.value = true
+    })
+  } else {
+    payForm.value.toWalletId = companyWallets.value[0]?.id || null
+    showPay.value = true
+  }
+}
+
 const openEdit = (w) => {
   editErr.value = ''
   selected.value = w
-  editForm.value = { id: w.id, walletName: w.walletName || '' }
+  editForm.value = { id: w.id, walletName: w.walletName || '', walletAddress: w.walletAddress || '', walletType: 'MEMBER' }
   showEdit.value = true
 }
 
@@ -326,16 +388,33 @@ const saveEdit = async () => {
   try {
     const id = editForm.value.id
     const name = (editForm.value.walletName || '').trim()
+    const addr = (editForm.value.walletAddress || '').trim()
+    const type = 'MEMBER'
     if (!id) return
     const payload = {}
     if (name) payload.walletName = name
+    if (addr) payload.walletAddress = addr
+    payload.walletType = type
     // Optimistically update local list (no dedicated user update API; reuse admin update if exposed later)
     const idx = wallets.value.findIndex(w => w.id === id)
-    if (idx !== -1 && name) wallets.value[idx].walletName = name
+    if (idx !== -1) {
+      if (name) wallets.value[idx].walletName = name
+      if (addr) wallets.value[idx].walletAddress = addr
+      wallets.value[idx].walletType = type
+    }
     showEdit.value = false
   } catch (e) {
     editErr.value = e?.message || 'Update failed'
   }
+}
+
+const toggleStatus = async (w) => {
+  try {
+    const resp = await toggleWalletStatus(w.id)
+    if (resp && resp.success) {
+      w.isActive = !w.isActive
+    }
+  } catch (e) {}
 }
 
 const copyAddress = async (addr) => {
@@ -373,7 +452,7 @@ const addWallet = async () => {
       userId: userId.toString(),
       walletName: newWallet.value.walletName,
       walletAddress: newWallet.value.walletAddress,
-      walletType: newWallet.value.walletType
+      walletType: 'MEMBER'
     }
 
     const response = await apiService.createWallet(walletData)
@@ -385,7 +464,7 @@ const addWallet = async () => {
       newWallet.value = {
         walletName: '',
         walletAddress: '',
-        walletType: ''
+        walletType: 'MEMBER'
       }
       
       // Close modal
@@ -395,6 +474,38 @@ const addWallet = async () => {
     console.error('Failed to add wallet:', error)
   } finally {
     isAddingWallet.value = false
+  }
+}
+
+const submitPay = async () => {
+  payMsg.value = ''
+  payOk.value = false
+  try {
+    const payload = {
+      fromAddress: (payForm.value.fromAddress || '').trim(),
+      toWalletId: payForm.value.toWalletId,
+      fromWalletId: payForm.value.fromWalletId,
+      amount: String(payForm.value.amount),
+      description: (payForm.value.description || '').trim()
+    }
+    const resp = await apiService.recordWalletPayment(payload)
+    payOk.value = !!resp.success
+    payMsg.value = resp.message || (resp.success ? 'Payment recorded' : (resp.error || 'Failed to record'))
+    if (resp.success) {
+      showPay.value = false
+    }
+  } catch (e) {
+    payOk.value = false
+    payMsg.value = e?.message || 'Failed to record'
+  }
+}
+
+const loadCompanyWallets = async () => {
+  try {
+    const resp = await apiService.getWalletsPaged({ offset: 0, limit: 50, type: 'COMPANY', active: true })
+    companyWallets.value = resp?.data || []
+  } catch (e) {
+    companyWallets.value = []
   }
 }
 

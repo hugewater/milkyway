@@ -37,9 +37,9 @@
           <div class="text-xs uppercase tracking-wider text-white/60 mb-3">
             {{ isAdmin.value ? 'Management' : 'Dashboard' }}
           </div>
-          
+          <!-- Flat items -->
           <router-link
-            v-for="item in menuItems"
+            v-for="item in flatMenuItems"
             :key="item.path"
             :to="item.path"
             class="flex items-center px-3 lg:px-4 py-3 text-white/90 hover:bg-white/10 rounded-lg mb-2 transition-colors"
@@ -51,6 +51,44 @@
             </svg>
             <span class="text-sm font-medium">{{ item.name }}</span>
           </router-link>
+
+          <!-- AI collapsible group moved to bottom (Admin and User) -->
+          <div class="mt-4">
+            <button
+              @click="toggleAi"
+              class="w-full flex items-center justify-between px-3 lg:px-4 py-3 text-white/90 hover:bg-white/10 rounded-lg transition-colors"
+              :class="{ 'bg-white/10 text-white': route.path.startsWith('/admin/ai') || route.path.startsWith('/ai') }"
+            >
+              <div class="flex items-center">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 1.657-1.343 3-3 3S6 12.657 6 11s1.343-3 3-3 3 1.343 3 3zm6 0a3 3 0 11-6 0 3 3 0 016 0zm-9 5a5 5 0 00-5 5h10a5 5 0 00-5-5zm9 0a5 5 0 00-5 5h10a5 5 0 00-5-5z"></path>
+                </svg>
+                <span class="text-sm font-medium">AI</span>
+              </div>
+              <svg class="w-4 h-4 transform transition-transform" :class="{ 'rotate-90': aiOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              </svg>
+            </button>
+            <div v-show="aiOpen" class="ml-8 mt-1">
+              <router-link
+                v-if="isAdmin.value"
+                to="/admin/ai/agents"
+                class="block px-3 lg:px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg mb-1"
+                :class="{ 'bg-white/10 text-white': isActiveRoute('/admin/ai/agents') }"
+                @click="closeSidebar"
+              >
+                Agents
+              </router-link>
+              <router-link
+                :to="isAdmin.value ? '/admin/ai/chats' : '/ai/chats'"
+                class="block px-3 lg:px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg"
+                :class="{ 'bg-white/10 text-white': isActiveRoute('/admin/ai/chats') || isActiveRoute('/ai/chats') }"
+                @click="closeSidebar"
+              >
+                Chats
+              </router-link>
+            </div>
+          </div>
         </div>
 
         <!-- Logout (Admin) / Account (User) -->
@@ -150,13 +188,15 @@ const route = useRoute()
 
 const sidebarOpen = ref(false)
 const userMenuOpen = ref(false)
+const aiOpen = ref(false)
 
-// Admin menu items - Fixed menu that never changes
+// Admin menu items - Flat items only (exclude AI children)
 const adminMenuItems = computed(() => [
   { name: 'Dashboard', path: '/admin', iconPath: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
   { name: 'Journals', path: '/admin/journals', iconPath: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
   { name: 'Members', path: '/admin/members', iconPath: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
   { name: 'Payments', path: '/admin/payments', iconPath: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+  { name: 'Transactions', path: '/admin/transactions', iconPath: 'M12 8v8m4-4H8' },
   { name: 'Rewards', path: '/admin/rewards', iconPath: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1' },
   { name: 'Drawings', path: '/admin/drawings', iconPath: 'M7 20l4-16m2 16l4-16M6 9h14M4 15h14' },
   { name: 'Certificates', path: '/admin/certificates', iconPath: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1' },
@@ -170,18 +210,22 @@ const userMenuItems = computed(() => [
   { name: 'My Team', path: '/team', iconPath: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
   { name: 'My Rewards', path: '/my-rewards', iconPath: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1' },
   { name: 'My Wallets', path: '/my-wallets', iconPath: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+  { name: 'My Transactions', path: '/my-transactions', iconPath: 'M12 8v8m4-4H8' },
   { name: 'My Winnings', path: '/my-winnings', iconPath: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z' },
   { name: 'Winning Numbers', path: '/winning-numbers', iconPath: 'M7 20l4-16m2 16l4-16M6 9h14M4 15h14' },
   { name: 'Certificates', path: '/certificates', iconPath: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1' }
 ])
 
 const isAdmin = computed(() => {
-  return currentUser.value && (currentUser.value.role === 'ADMIN' || currentUser.value.role === 'SUPER_ADMIN')
+  if (!currentUser.value || !currentUser.value.role) return false
+  const r = String(currentUser.value.role).toUpperCase()
+  return r === 'ADMIN' || r === 'SUPER_ADMIN'
 })
 
 // Fixed menu items that never change
-const menuItems = computed(() => {
-  return isAdmin.value ? adminMenuItems.value : userMenuItems.value
+const flatMenuItems = computed(() => {
+  const isAdminContext = isAdmin.value || route.path.startsWith('/admin')
+  return isAdminContext ? adminMenuItems.value : userMenuItems.value
 })
 
 const userName = computed(() => {
@@ -213,6 +257,7 @@ const pageTitle = computed(() => {
   if (path.includes('/payments')) return 'Payments'
   if (path.includes('/drawings')) return 'Drawings'
   if (path.includes('/admin-manager')) return 'Admin Manager'
+  if (path.startsWith('/admin/ai')) return 'AI'
   return 'BigWater'
 })
 
@@ -252,7 +297,9 @@ const isActiveRoute = (path) => {
   return route.path.startsWith(path) && path !== '/admin' && path !== '/dashboard'
 }
 
-// Add click outside listener
+const toggleAi = () => { aiOpen.value = !aiOpen.value }
+
+// Expand AI group when current route is under it
 onMounted(() => {
   document.addEventListener('click', (event) => {
     const userMenu = document.querySelector('.user-menu-container')
@@ -260,6 +307,7 @@ onMounted(() => {
       userMenuOpen.value = false
     }
   })
+  if (route.path.startsWith('/admin/ai')) aiOpen.value = true
 })
 </script>
 

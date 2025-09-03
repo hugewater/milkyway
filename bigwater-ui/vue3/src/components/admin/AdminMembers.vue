@@ -891,7 +891,7 @@ const downlines = ref([])
 const newWallet = ref({
   walletName: '',
   walletAddress: '',
-  walletType: 'MEMBER'
+  walletType: 'COMPANY'
 })
 
 // filters & pagination
@@ -1183,7 +1183,7 @@ const saveEditMember = async () => {
       email: editingMember.value.email,
       phone: editingMember.value.phone,
       level: editingMember.value.level,
-      status: editingMember.value.status,
+      status: editingMember.value.status ? editingMember.value.status.toUpperCase() : undefined,
       referredByCode: editingMember.value.referredByCode
     }
     
@@ -1318,7 +1318,7 @@ const openAddWalletModal = () => {
   newWallet.value = {
     walletName: '',
     walletAddress: '',
-    walletType: 'MEMBER'
+    walletType: 'COMPANY'
   }
   showAddWalletModal.value = true
 }

@@ -279,6 +279,13 @@ class ApiService {
     })
   }
 
+  async recordWalletPayment(payload) {
+    return this.request('/transactions/self-report', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
   // Transaction APIs
   async getTransactionsByUserId(userId) {
     return this.request(`/transactions/user/${userId}`)
@@ -286,6 +293,21 @@ class ApiService {
 
   async getTransactionsByWalletId(walletId) {
     return this.request(`/transactions/wallet/${walletId}`)
+  }
+
+  // AI Agents
+  async listAgents(params = {}) {
+    const q = new URLSearchParams(params).toString()
+    return this.request(`/ai/agents${q ? `?${q}` : ''}`)
+  }
+  async createAgent(payload) {
+    return this.request(`/ai/agents`, { method: 'POST', body: JSON.stringify(payload) })
+  }
+  async updateAgent(id, payload) {
+    return this.request(`/ai/agents/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+  }
+  async deleteAgent(id) {
+    return this.request(`/ai/agents/${id}`, { method: 'DELETE' })
   }
 
   async getUserNetwork(userId) {
@@ -297,6 +319,21 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(downlineData)
     })
+  }
+
+  // AI Chats
+  async listChats(params = {}) {
+    const q = new URLSearchParams(params).toString()
+    return this.request(`/ai/chats${q ? `?${q}` : ''}`)
+  }
+  async createChat(payload) {
+    return this.request(`/ai/chats`, { method: 'POST', body: JSON.stringify(payload) })
+  }
+  async updateChat(id, payload) {
+    return this.request(`/ai/chats/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+  }
+  async deleteChat(id) {
+    return this.request(`/ai/chats/${id}`, { method: 'DELETE' })
   }
 
   // Health check
@@ -358,4 +395,10 @@ export const getUserNetwork = apiService.getUserNetwork.bind(apiService)
 export const addDownline = apiService.addDownline.bind(apiService)
 export const healthCheck = apiService.healthCheck.bind(apiService)
 export const getVersion = apiService.getVersion.bind(apiService)
+
+// Agents
+export const listAgents = apiService.listAgents.bind(apiService)
+export const createAgent = apiService.createAgent.bind(apiService)
+export const updateAgent = apiService.updateAgent.bind(apiService)
+export const deleteAgent = apiService.deleteAgent.bind(apiService)
 
