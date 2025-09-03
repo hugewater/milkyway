@@ -145,6 +145,7 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th @click="toggleSortMembers('join_date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Join Date</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -217,6 +218,29 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Member Modal -->
+    <div v-if="showViewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-deep-ocean">View Member</h3>
+          <button @click="showViewModal = false" class="text-gray-500 hover:text-gray-700">✕</button>
+        </div>
+        <div v-if="viewingMember" class="space-y-3 text-sm">
+          <div class="flex justify-between"><span class="text-gray-500">ID</span><span class="text-gray-900">{{ viewingMember.id }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Name</span><span class="text-gray-900">{{ viewingMember.name }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Email</span><span class="text-gray-900 break-all">{{ viewingMember.email }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Level</span><span><span :class="getLevelBadgeClass(viewingMember.level)" class="px-2 py-1 text-xs font-medium rounded-full">{{ viewingMember.level }}</span></span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Status</span><span><span :class="getStatusBadgeClass(viewingMember.status)" class="px-2 py-1 text-xs font-medium rounded-full">{{ viewingMember.status }}</span></span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Referral Code</span><span class="text-gray-900 font-mono">{{ viewingMember.referralCode || 'N/A' }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Join Date</span><span class="text-gray-900">{{ formatDate(viewingMember.joinDate) }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Balance</span><span class="text-gray-900">${{ (viewingMember.balance || 0).toLocaleString() }}</span></div>
+        </div>
+        <div class="flex justify-end mt-6">
+          <button @click="showViewModal = false" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
         </div>
       </div>
     </div>
@@ -646,10 +670,9 @@
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
               >
-                <option value="MAIN">Main</option>
-                <option value="TRADING">Trading</option>
-                <option value="STAKING">Staking</option>
-                <option value="REWARDS">Rewards</option>
+                <option value="COMPANY">Company</option>
+                <option value="MEMBER">Member</option>
+                <option value="TESTING">Testing</option>
               </select>
             </div>
           </div>
@@ -847,6 +870,8 @@ const showPayModal = ref(false)
 const showWithdrawModal = ref(false)
 const showTransactionsModal = ref(false)
 const showAddWalletModal = ref(false)
+const showViewModal = ref(false)
+const viewingMember = ref(null)
 const showUplineDownlineModal = ref(false)
 const showNetworkGraphModal = ref(false)
 const selectedUser = ref(null)
@@ -866,7 +891,7 @@ const downlines = ref([])
 const newWallet = ref({
   walletName: '',
   walletAddress: '',
-  walletType: 'MAIN'
+  walletType: 'MEMBER'
 })
 
 // filters & pagination
@@ -1206,8 +1231,8 @@ const saveEditMember = async () => {
 }
 
 const viewMember = (member) => {
-  // Implementation for viewing member details
-  console.log('View member:', member)
+  viewingMember.value = { ...member }
+  showViewModal.value = true
 }
 
 const toggleMemberStatus = (member) => {
@@ -1293,7 +1318,7 @@ const openAddWalletModal = () => {
   newWallet.value = {
     walletName: '',
     walletAddress: '',
-    walletType: 'MAIN'
+    walletType: 'MEMBER'
   }
   showAddWalletModal.value = true
 }
