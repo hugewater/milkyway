@@ -220,8 +220,12 @@ const referralData = ref({
   tier3Referrals: 12
 })
 
+// 订阅周数：优先读取用户存储字段
+const userData = ref({})
+const weeksSubscribed = computed(() => userData.value?.weeksSubscribed ?? userData.value?.subscriptionWeeks ?? 24)
+
 const userLevel = computed(() => {
-  return calculateUserLevel(referralData.value.directReferrals)
+  return calculateUserLevel(referralData.value.directReferrals, weeksSubscribed.value)
 })
 
 const totalEarnings = computed(() => {
@@ -252,4 +256,11 @@ const recentRewards = ref([
   { id: 4, description: 'Direct referral bonus', referralName: 'Emma Davis', tier: 'Tier 1', amount: '4.50', date: '3 days ago', type: 'tier1' },
   { id: 5, description: 'Network bonus', referralName: 'James Brown', tier: 'Tier 2', amount: '1.50', date: '4 days ago', type: 'tier2' }
 ])
+
+onMounted(() => {
+  const u = localStorage.getItem('user')
+  if (u) {
+    try { userData.value = JSON.parse(u) } catch {}
+  }
+})
 </script>

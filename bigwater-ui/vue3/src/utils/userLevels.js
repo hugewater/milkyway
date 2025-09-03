@@ -6,11 +6,19 @@ export const USER_ROLES = {
 }
 
 export const SUBSCRIBER_LEVELS = {
+  CUSTOMER: {
+    level: 0,
+    name: 'Customer',
+    stars: 0,
+    minReferrals: 0,
+    bonusMultiplier: 0,
+    icon: '👤'
+  },
   CHIEF: {
     level: 1,
     name: 'Chief',
     stars: 1,
-    minReferrals: 0,
+    minReferrals: 1,
     bonusMultiplier: 0, // No extra bonus
     icon: '⭐'
   },
@@ -67,8 +75,15 @@ export const REWARD_STRUCTURE = {
 }
 
 // Calculate user level based on direct referrals
-export function calculateUserLevel(directReferrals) {
-  const levels = Object.values(SUBSCRIBER_LEVELS).reverse()
+export function calculateUserLevel(directReferrals, weeksSubscribed = 24) {
+  // If no referrals yet OR subscription weeks < 24 → Customer
+  if (!directReferrals || directReferrals === 0 || weeksSubscribed < 24) {
+    return SUBSCRIBER_LEVELS.CUSTOMER
+  }
+
+  const levels = Object.values(SUBSCRIBER_LEVELS)
+    .filter(l => l.level > 0)
+    .reverse()
   
   for (const level of levels) {
     if (directReferrals >= level.minReferrals) {
@@ -76,7 +91,7 @@ export function calculateUserLevel(directReferrals) {
     }
   }
   
-  return SUBSCRIBER_LEVELS.CHIEF
+  return SUBSCRIBER_LEVELS.CUSTOMER
 }
 
 // Calculate bonus percentage for a tier based on user level

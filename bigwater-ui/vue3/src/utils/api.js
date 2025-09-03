@@ -26,12 +26,19 @@ class ApiService {
 
     try {
       const response = await fetch(url, config)
-      const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`)
+      let data
+      try {
+        data = await response.json()
+      } catch (parseErr) {
+        // 非JSON响应
+        data = { success: false, error: `Non-JSON response, status ${response.status}` }
       }
-      
+
+      if (!response.ok) {
+        const message = (data && (data.error || data.message)) || `HTTP error! status: ${response.status}`
+        throw new Error(message)
+      }
+
       return data
     } catch (error) {
       console.error('API request failed:', error)
@@ -221,6 +228,12 @@ class ApiService {
     })
   }
 
+  async deleteWallet(walletId) {
+    return this.request(`/wallets/${walletId}`, {
+      method: 'DELETE'
+    })
+  }
+
   async toggleWalletStatus(walletId) {
     return this.request(`/wallets/${walletId}/toggle-status`, {
       method: 'POST'
@@ -308,6 +321,7 @@ export const getWalletStats = apiService.getWalletStats.bind(apiService)
 export const transferBetweenWallets = apiService.transferBetweenWallets.bind(apiService)
 export const addBalanceToWallet = apiService.addBalanceToWallet.bind(apiService)
 export const updateWallet = apiService.updateWallet.bind(apiService)
+export const deleteWallet = apiService.deleteWallet.bind(apiService)
 export const toggleWalletStatus = apiService.toggleWalletStatus.bind(apiService)
 export const payToWallet = apiService.payToWallet.bind(apiService)
 export const withdrawFromWallet = apiService.withdrawFromWallet.bind(apiService)

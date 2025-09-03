@@ -48,7 +48,25 @@
 
         <!-- Referral Link -->
         <div class="card p-6 rounded-2xl mb-8">
-          <h3 class="text-lg font-bold text-deep-ocean mb-4">Your Referral Link</h3>
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-4 flex-wrap">
+              <div class="flex items-center space-x-3">
+                <span class="text-2xl">{{ userLevelTeam.icon }}</span>
+                <div>
+                  <p class="font-semibold text-deep-ocean">{{ userLevelTeam.name }}</p>
+                  <p class="text-xs text-gray-600">{{ userLevelTeam.stars }} Star Level</p>
+                </div>
+              </div>
+              <div class="text-sm text-gray-600 flex items-center space-x-3">
+                <span>Total: <span class="font-semibold text-deep-ocean">{{ totalNetworkCount }}</span></span>
+                <span>•</span>
+                <span>L1: <span class="font-semibold text-deep-ocean">{{ level1Count }}</span></span>
+                <span>L2: <span class="font-semibold text-deep-ocean">{{ level2Count }}</span></span>
+                <span>L3: <span class="font-semibold text-deep-ocean">{{ level3Count }}</span></span>
+              </div>
+            </div>
+            <h3 class="text-lg font-bold text-deep-ocean">My Referral Link</h3>
+          </div>
           <div class="flex items-center space-x-3">
             <input
               type="text"
@@ -477,6 +495,7 @@ import AppLayout from '../layouts/AppLayout.vue'
 import UserNetworkGraph from './UserNetworkGraph.vue'
 import { currentUser } from '../../utils/auth.js'
 import apiService from '../../utils/api.js'
+import { calculateUserLevel, SUBSCRIBER_LEVELS } from '../../utils/userLevels.js'
 
 const referralLink = computed(() => {
   const referralCode = currentUser.value?.referralCode || 'BW12345678'
@@ -520,6 +539,13 @@ const formatDate = (dateString) => {
 const calculateContribution = (user) => {
   // This could be based on actual business logic
   return Math.floor(Math.random() * 200) + 50
+}
+
+// Derive display title; default new members to Customer until >=24 weeks
+const getDisplayUserLevel = (member) => {
+  const weeks = member?.weeksSubscribed ?? member?.subscriptionWeeks ?? 0
+  if (weeks < 24) return 'Customer'
+  return member?.level || 'Chief'
 }
 
 // Load team network data from API
@@ -566,7 +592,7 @@ const loadNetworkData = async () => {
           email: member.email,
           initials: getInitials(member.firstName, member.lastName),
           level: 1,
-          userLevel: member.level || 'Chief',
+          userLevel: getDisplayUserLevel(member),
           status: member.status?.toLowerCase() || 'active',
           joinDate: formatDate(member.joinDate),
           contribution: calculateContribution(member),
@@ -591,7 +617,7 @@ const loadNetworkData = async () => {
           email: member.email,
           initials: getInitials(member.firstName, member.lastName),
           level: 2,
-          userLevel: member.level || 'Chief',
+          userLevel: getDisplayUserLevel(member),
           status: member.status?.toLowerCase() || 'active',
           joinDate: formatDate(member.joinDate),
           contribution: calculateContribution(member),
@@ -617,7 +643,7 @@ const loadNetworkData = async () => {
           email: member.email,
           initials: getInitials(member.firstName, member.lastName),
           level: 3,
-          userLevel: member.level || 'Chief',
+          userLevel: getDisplayUserLevel(member),
           status: member.status?.toLowerCase() || 'active',
           joinDate: formatDate(member.joinDate),
           contribution: calculateContribution(member),
@@ -745,6 +771,10 @@ const networkValue = computed(() => {
     .reduce((sum, member) => sum + (parseInt(member.contribution) || 0), 0)
   return total.toLocaleString()
 })
+
+// Star level for current user (same logic as dashboard)
+const weeksSubscribed = computed(() => currentUser.value?.weeksSubscribed ?? currentUser.value?.subscriptionWeeks ?? 24)
+const userLevelTeam = computed(() => calculateUserLevel(level1Members.value.length, weeksSubscribed.value))
 
 // Prepare data for ECharts Network Graph
 const currentUserForGraph = computed(() => {

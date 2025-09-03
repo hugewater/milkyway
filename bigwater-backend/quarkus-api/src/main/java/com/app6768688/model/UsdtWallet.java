@@ -109,6 +109,9 @@ public class UsdtWallet {
 
     // Enums
     public enum WalletType {
+        // New types
+        COMPANY, MEMBER, TESTING,
+        // Backward-compatible legacy values (kept to avoid breaking existing rows)
         MAIN, TRADING, STAKING, REWARDS
     }
 }

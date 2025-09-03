@@ -205,6 +205,21 @@ public class WalletRepository {
         }
     }
 
+    public List<UsdtWallet> findAll() {
+        String sql = "SELECT * FROM usdt_wallets ORDER BY created_at DESC";
+        List<UsdtWallet> wallets = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                wallets.add(mapResultSetToWallet(rs));
+            }
+            return wallets;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding all wallets", e);
+        }
+    }
+
     @Transactional
     public UsdtWallet update(UsdtWallet wallet) {
         String sql = """
@@ -219,11 +234,36 @@ public class WalletRepository {
             
             stmt.setLong(1, wallet.getUserId());
             stmt.setString(2, wallet.getWalletAddress());
-            stmt.setString(3, wallet.getWalletName());
-            stmt.setString(4, wallet.getWalletType().name());
-            stmt.setBigDecimal(5, wallet.getBalance());
-            stmt.setBoolean(6, wallet.getIsActive());
-            stmt.setBoolean(7, wallet.getIsVerified());
+            // wallet_name (nullable)
+            if (wallet.getWalletName() != null) {
+                stmt.setString(3, wallet.getWalletName());
+            } else {
+                stmt.setNull(3, Types.VARCHAR);
+            }
+            // wallet_type (nullable)
+            if (wallet.getWalletType() != null) {
+                stmt.setString(4, wallet.getWalletType().name());
+            } else {
+                stmt.setNull(4, Types.VARCHAR);
+            }
+            // balance (nullable)
+            if (wallet.getBalance() != null) {
+                stmt.setBigDecimal(5, wallet.getBalance());
+            } else {
+                stmt.setNull(5, Types.DECIMAL);
+            }
+            // is_active (nullable)
+            if (wallet.getIsActive() != null) {
+                stmt.setBoolean(6, wallet.getIsActive());
+            } else {
+                stmt.setNull(6, Types.BOOLEAN);
+            }
+            // is_verified (nullable)
+            if (wallet.getIsVerified() != null) {
+                stmt.setBoolean(7, wallet.getIsVerified());
+            } else {
+                stmt.setNull(7, Types.BOOLEAN);
+            }
             stmt.setTimestamp(8, Timestamp.valueOf(LocalDateTime.now()));
             stmt.setLong(9, wallet.getId());
             

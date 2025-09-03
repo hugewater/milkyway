@@ -69,6 +69,10 @@ public class WalletService {
         return walletRepository.findActive();
     }
 
+    public List<UsdtWallet> findAll() {
+        return walletRepository.findAll();
+    }
+
     public List<UsdtWallet> findVerified() {
         return walletRepository.findVerified();
     }

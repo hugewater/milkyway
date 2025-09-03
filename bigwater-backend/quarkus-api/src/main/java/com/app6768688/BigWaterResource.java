@@ -240,7 +240,9 @@ public class BigWaterResource {
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
-            response.put("error", e.getMessage());
+            String base = e.getMessage() != null ? e.getMessage() : "Update failed";
+            String causeMsg = e.getCause() != null && e.getCause().getMessage() != null ? (": " + e.getCause().getMessage()) : "";
+            response.put("error", base + causeMsg);
             
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(response)
@@ -701,7 +703,7 @@ public class BigWaterResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAllWallets() {
         try {
-            List<UsdtWallet> wallets = walletService.findActive();
+            List<UsdtWallet> wallets = walletService.findAll();
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", wallets);
@@ -877,12 +879,22 @@ public class BigWaterResource {
             }
 
             UsdtWallet existingWallet = existingWalletOpt.get();
-            UsdtWallet.WalletType walletType = UsdtWallet.WalletType.valueOf(walletTypeStr);
 
-            // Update wallet fields
-            existingWallet.setWalletAddress(walletAddress);
-            existingWallet.setWalletName(walletName);
-            existingWallet.setWalletType(walletType);
+            // Update wallet fields only if provided
+            if (walletAddress != null && !walletAddress.trim().isEmpty()) {
+                existingWallet.setWalletAddress(walletAddress);
+            }
+            if (walletName != null && !walletName.trim().isEmpty()) {
+                existingWallet.setWalletName(walletName);
+            }
+            if (walletTypeStr != null && !walletTypeStr.trim().isEmpty()) {
+                try {
+                    UsdtWallet.WalletType walletType = UsdtWallet.WalletType.valueOf(walletTypeStr.toUpperCase());
+                    existingWallet.setWalletType(walletType);
+                } catch (IllegalArgumentException iae) {
+                    // ignore invalid type and keep original
+                }
+            }
 
             UsdtWallet updatedWallet = walletService.updateWallet(existingWallet);
             
@@ -948,6 +960,31 @@ public class BigWaterResource {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(response)
                     .build();
+        }
+    }
+
+    @DELETE
+    @Path("/wallets/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteWallet(@PathParam("id") Long walletId) {
+        try {
+            Optional<UsdtWallet> existingWalletOpt = walletService.findById(walletId);
+            if (existingWalletOpt.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Wallet not found");
+                return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+            }
+            walletService.deleteWallet(walletId);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Wallet deleted successfully");
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
         }
     }
 
@@ -2125,7 +2162,8 @@ public class BigWaterResource {
             newDownline.setRole(User.UserRole.SUBSCRIBER);
             // Make new member ACTIVE by default
             newDownline.setStatus(User.UserStatus.ACTIVE);
-            newDownline.setLevel(User.UserLevel.CHIEF);
+            // Default new member to lowest displayed title until conditions met
+            newDownline.setLevel(User.UserLevel.CHIEF); // stored enum unchanged; frontend maps weeks<24 to "Customer"
             
             // Update the user with all fields
             newDownline = userService.updateUser(newDownline);

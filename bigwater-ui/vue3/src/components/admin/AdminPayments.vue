@@ -85,10 +85,9 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Wallet Type</label>
           <select v-model="walletForm.walletType"
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option value="MAIN">Main</option>
-            <option value="TRADING">Trading</option>
-            <option value="STAKING">Staking</option>
-            <option value="REWARDS">Rewards</option>
+            <option value="COMPANY">Company</option>
+            <option value="MEMBER">Member</option>
+            <option value="TESTING">Testing</option>
           </select>
         </div>
         <div class="flex items-end">
@@ -149,26 +148,237 @@
       </div>
       <p v-if="transferMsg" class="mt-4 text-sm" :class="transferOk ? 'text-green-600' : 'text-red-600'">{{ transferMsg }}</p>
     </div>
+
+    <!-- Company Wallets List -->
+    <div class="card p-6 rounded-2xl mt-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-deep-ocean">Company Wallets</h3>
+        <button @click="loadCompanyWallets" class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+          Refresh
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nick Name</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-if="loadingWallets">
+              <td colspan="5" class="px-4 py-6 text-center text-sm text-gray-500">Loading wallets...</td>
+            </tr>
+            <tr v-for="w in wallets" :key="w.id" class="hover:bg-gray-50" :class="!w.isActive ? 'bg-red-50' : ''">
+              <td class="px-4 py-2 text-sm" :class="!w.isActive ? 'text-red-600' : 'text-gray-900'">{{ w.id }}</td>
+              <td class="px-4 py-2 text-sm" :class="!w.isActive ? 'text-red-600' : 'text-gray-900'">{{ w.walletName || '-' }}</td>
+              <td class="px-4 py-2 text-sm font-mono" :class="!w.isActive ? 'text-red-600' : 'text-gray-900'" :title="w.walletAddress">{{ (w.walletAddress || '').slice(0, 10) }}...</td>
+              <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(w.createdAt || w.created_at) }}</td>
+              <td class="px-4 py-2 text-sm">
+                <div class="relative inline-block text-left" data-wallet-actions-menu>
+                  <button @click="toggleActions(w.id)"
+                    class="inline-flex justify-center w-9 h-9 items-center rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6h.01M12 12h.01M12 18h.01"></path>
+                    </svg>
+                  </button>
+                  <div v-if="openActionId === w.id"
+                       class="origin-top-right absolute right-0 mt-2 w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                    <div class="py-1">
+                      <button @click="openViewWallet(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View</button>
+                      <button @click="openEditWallet(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit</button>
+                      <button @click="toggleStatus(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ w.isActive ? 'Deactivate' : 'Activate' }}</button>
+                      <button @click="deleteWalletRow(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Delete</button>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- View Wallet Modal -->
+    <div v-if="showViewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-lg">
+        <h3 class="text-lg font-bold text-deep-ocean mb-4">Wallet Details</h3>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between"><span class="text-gray-600">ID</span><span class="font-mono">{{ selectedWallet?.id }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Nick Name</span><span>{{ selectedWallet?.walletName || '-' }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Address</span><span class="font-mono">{{ selectedWallet?.walletAddress }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Type</span><span>{{ selectedWallet?.walletType || '-' }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Created</span><span>{{ formatDate(selectedWallet?.createdAt || selectedWallet?.created_at) }}</span></div>
+        </div>
+        <div class="flex justify-end mt-6">
+          <button @click="showViewModal = false" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Wallet Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-lg">
+        <h3 class="text-lg font-bold text-deep-ocean mb-4">Edit Wallet</h3>
+        <form @submit.prevent="saveWalletEdit" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nick Name</label>
+            <input v-model="editWalletForm.walletName" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+            <input v-model="editWalletForm.walletAddress" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <select v-model="editWalletForm.walletType" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="COMPANY">Company</option>
+              <option value="MEMBER">Member</option>
+              <option value="TESTING">Testing</option>
+            </select>
+          </div>
+          <div class="flex justify-end space-x-3 pt-2">
+            <button type="button" @click="showEditModal = false" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
+          </div>
+          <p v-if="editErrorMsg" class="text-sm text-red-600">{{ editErrorMsg }}</p>
+        </form>
+      </div>
+    </div>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
 import AppLayout from '../layouts/AppLayout.vue'
-import { ref } from 'vue'
-import { transferBetweenWallets, createWallet, addBalanceToWallet } from '../../utils/api.js'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { transferBetweenWallets, createWallet, addBalanceToWallet, getWallets, toggleWalletStatus, deleteWallet, updateWallet } from '../../utils/api.js'
 
 const form = ref({ fromWalletId: null, toWalletId: null, amount: '' })
 const transferMsg = ref('')
 const transferOk = ref(false)
 
-const walletForm = ref({ userId: 1, walletAddress: '', walletName: '', walletType: 'MAIN' })
+const walletForm = ref({ userId: 1, walletAddress: '', walletName: '', walletType: 'COMPANY' })
 const walletMsg = ref('')
 const walletOk = ref(false)
 
 const balanceForm = ref({ walletId: null, amount: '' })
 const balanceMsg = ref('')
 const balanceOk = ref(false)
+
+// Company wallets list & modals
+const wallets = ref([])
+const loadingWallets = ref(false)
+const showViewModal = ref(false)
+const showEditModal = ref(false)
+const editErrorMsg = ref('')
+const selectedWallet = ref(null)
+const editWalletForm = ref({ id: null, walletName: '', walletAddress: '', walletType: 'MAIN' })
+const openActionId = ref(null)
+
+const toggleActions = (id) => {
+  openActionId.value = openActionId.value === id ? null : id
+}
+const closeActions = () => { openActionId.value = null }
+
+const onClickOutside = (e) => {
+  // 如果点击不在任何菜单内，则关闭
+  const menus = document.querySelectorAll('[data-wallet-actions-menu]')
+  let inside = false
+  menus.forEach(m => { if (m.contains(e.target)) inside = true })
+  if (!inside) closeActions()
+}
+
+const formatDate = (d) => {
+  if (!d) return ''
+  try {
+    const dt = typeof d === 'string' && d.length > 10 ? d.slice(0, 19) : d
+    return new Date(dt).toLocaleString()
+  } catch { return String(d) }
+}
+
+const loadCompanyWallets = async () => {
+  loadingWallets.value = true
+  try {
+    const resp = await getWallets()
+    wallets.value = resp.data || resp || []
+  } catch (e) {
+    wallets.value = []
+  } finally {
+    loadingWallets.value = false
+  }
+}
+
+const openViewWallet = (w) => {
+  selectedWallet.value = w
+  showViewModal.value = true
+}
+
+const openEditWallet = (w) => {
+  selectedWallet.value = w
+  editWalletForm.value = {
+    id: w.id,
+    walletName: w.walletName || '',
+    walletAddress: w.walletAddress || '',
+    walletType: w.walletType || 'MAIN'
+  }
+  editErrorMsg.value = ''
+  showEditModal.value = true
+}
+
+const saveWalletEdit = async () => {
+  try {
+    const { id, walletName, walletAddress, walletType } = editWalletForm.value
+    const payload = {}
+    // Only send non-empty fields to avoid backend validation errors
+    if (walletName && walletName.trim() !== '') payload.walletName = walletName.trim()
+    if (walletAddress && walletAddress.trim() !== '') payload.walletAddress = walletAddress.trim()
+    if (walletType && walletType.trim() !== '') payload.walletType = walletType.trim().toUpperCase()
+    const resp = await updateWallet(id, payload)
+    if (resp && resp.success) {
+      // Update local list
+      const idx = wallets.value.findIndex(w => w.id === id)
+      if (idx !== -1) {
+        wallets.value[idx] = { ...wallets.value[idx], ...payload }
+      }
+      showEditModal.value = false
+      editErrorMsg.value = ''
+    }
+  } catch (e) {
+    editErrorMsg.value = e?.message || 'Update failed'
+  }
+}
+
+const toggleStatus = async (w) => {
+  try {
+    const resp = await toggleWalletStatus(w.id)
+    if (resp && resp.success) {
+      w.isActive = !w.isActive
+    }
+  } catch (e) {}
+}
+
+const deleteWalletRow = async (w) => {
+  if (!confirm('Delete this wallet? This action cannot be undone.')) return
+  try {
+    const resp = await deleteWallet(w.id)
+    if (resp && resp.success) {
+      wallets.value = wallets.value.filter(x => x.id !== w.id)
+    }
+  } catch (e) {}
+}
+
+onMounted(() => {
+  loadCompanyWallets()
+  document.addEventListener('click', onClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onClickOutside)
+})
 
 const createCompanyWallet = async () => {
   walletMsg.value = ''
@@ -185,7 +395,7 @@ const createCompanyWallet = async () => {
     walletMsg.value = resp.message || (resp.success ? 'Wallet created successfully' : 'Wallet creation failed')
     if (resp.success) {
       // Reset form after successful creation
-      walletForm.value = { userId: 1, walletAddress: '', walletName: '', walletType: 'MAIN' }
+      walletForm.value = { userId: 1, walletAddress: '', walletName: '', walletType: 'COMPANY' }
     }
   } catch (e) {
     walletOk.value = false

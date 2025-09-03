@@ -193,8 +193,13 @@ const subscriptionType = computed(() => {
   return userData.value.subscriptionType === 'double' ? 'Double Win' : 'Standard'
 })
 
+// Weeks subscribed: prefer stored user field; fallback to 24 (treated as fully eligible)
+const weeksSubscribed = computed(() => {
+  return userData.value?.weeksSubscribed ?? userData.value?.subscriptionWeeks ?? 24
+})
+
 const userLevel = computed(() => {
-  return calculateUserLevel(referralData.value.directReferrals)
+  return calculateUserLevel(referralData.value.directReferrals, weeksSubscribed.value)
 })
 
 const userRole = computed(() => {
