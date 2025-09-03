@@ -88,6 +88,14 @@ public class UserService {
         return userRepository.findAll();
     }
 
+    public List<User> findByQuery(UserRepository.UserQuery q) {
+        return userRepository.findByQuery(q);
+    }
+
+    public long countByQuery(UserRepository.UserQuery q) {
+        return userRepository.countByQuery(q);
+    }
+
     public List<User> findByStatus(User.UserStatus status) {
         return userRepository.findByStatus(status);
     }

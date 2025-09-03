@@ -18,6 +18,15 @@
           </div>
         </div>
       </div>
+      <div class="flex items-center justify-between mt-4">
+        <div class="text-sm text-gray-600">Total: {{ total }} · Page {{ currentPage() }} / {{ totalPages() }}</div>
+        <div class="space-x-2">
+          <button @click="goToPage(1)" class="px-3 py-1 border rounded text-sm" :disabled="currentPage() === 1">First</button>
+          <button @click="goToPage(currentPage()-1)" class="px-3 py-1 border rounded text-sm" :disabled="currentPage() === 1">Prev</button>
+          <button @click="goToPage(currentPage()+1)" class="px-3 py-1 border rounded text-sm" :disabled="currentPage() === totalPages()">Next</button>
+          <button @click="goToPage(totalPages())" class="px-3 py-1 border rounded text-sm" :disabled="currentPage() === totalPages()">Last</button>
+        </div>
+      </div>
 
       <div class="card p-6 rounded-2xl">
         <div class="flex items-center">
@@ -153,18 +162,37 @@
     <div class="card p-6 rounded-2xl mt-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-bold text-deep-ocean">Company Wallets</h3>
-        <button @click="loadCompanyWallets" class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
-          Refresh
-        </button>
+        <div class="flex items-center space-x-2">
+          <input v-model="keyword" @input="onSearchInput" placeholder="Search name/address" class="border rounded px-3 py-2 text-sm w-56" />
+          <select v-model="typeFilter" @change="offset=0; loadCompanyWallets()" class="border rounded px-2 py-2 text-sm">
+            <option value="">All Types</option>
+            <option value="COMPANY">Company</option>
+            <option value="MEMBER">Member</option>
+            <option value="TESTING">Testing</option>
+          </select>
+          <select v-model="activeFilter" @change="offset=0; loadCompanyWallets()" class="border rounded px-2 py-2 text-sm">
+            <option value="">All</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+          <select v-model.number="limit" @change="offset=0; loadCompanyWallets()" class="border rounded px-2 py-2 text-sm">
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
+          <button @click="loadCompanyWallets" class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+            Refresh
+          </button>
+        </div>
       </div>
       <div class="overflow-x-auto overflow-y-visible">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+              <th @click="toggleSort('id')" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">ID</th>
               <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nick Name</th>
               <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+              <th @click="toggleSort('created_at')" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Created</th>
               <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -258,7 +286,7 @@
 <script setup>
 import AppLayout from '../layouts/AppLayout.vue'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { transferBetweenWallets, createWallet, addBalanceToWallet, getWallets, toggleWalletStatus, deleteWallet, updateWallet } from '../../utils/api.js'
+import { transferBetweenWallets, createWallet, addBalanceToWallet, getWalletsPaged, toggleWalletStatus, deleteWallet, updateWallet } from '../../utils/api.js'
 
 const form = ref({ fromWalletId: null, toWalletId: null, amount: '' })
 const transferMsg = ref('')
@@ -282,6 +310,17 @@ const selectedWallet = ref(null)
 const editWalletForm = ref({ id: null, walletName: '', walletAddress: '', walletType: 'MAIN' })
 const openActionId = ref(null)
 const menuPos = ref({ top: 0, left: 0 })
+
+// pagination & filters
+const total = ref(0)
+const offset = ref(0)
+const limit = ref(50)
+const sort = ref('created_at')
+const order = ref('desc')
+const typeFilter = ref('')
+const activeFilter = ref('') // '', 'true', 'false'
+const keyword = ref('')
+let searchTimer = null
 
 const toggleActions = (id, evt) => {
   if (openActionId.value === id) {
@@ -314,13 +353,51 @@ const formatDate = (d) => {
 const loadCompanyWallets = async () => {
   loadingWallets.value = true
   try {
-    const resp = await getWallets()
-    wallets.value = resp.data || resp || []
+    const resp = await getWalletsPaged({
+      offset: offset.value,
+      limit: limit.value,
+      sort: sort.value,
+      order: order.value,
+      type: typeFilter.value,
+      active: activeFilter.value === '' ? undefined : activeFilter.value === 'true',
+      q: keyword.value
+    })
+    wallets.value = resp.data || []
+    total.value = resp.total || 0
   } catch (e) {
     wallets.value = []
+    total.value = 0
   } finally {
     loadingWallets.value = false
   }
+}
+
+const toggleSort = (col) => {
+  if (sort.value === col) {
+    order.value = order.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sort.value = col
+    order.value = 'desc'
+  }
+  offset.value = 0
+  loadCompanyWallets()
+}
+
+const onSearchInput = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    offset.value = 0
+    loadCompanyWallets()
+  }, 300)
+}
+
+const totalPages = () => Math.max(1, Math.ceil((total.value || 0) / (limit.value || 50)))
+const currentPage = () => Math.floor((offset.value || 0) / (limit.value || 50)) + 1
+const goToPage = (page) => {
+  const tp = totalPages()
+  const p = Math.min(tp, Math.max(1, page))
+  offset.value = (p - 1) * limit.value
+  loadCompanyWallets()
 }
 
 const openViewWallet = (w) => {

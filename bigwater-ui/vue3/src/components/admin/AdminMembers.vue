@@ -82,13 +82,14 @@
 
       <!-- Search and Filters -->
       <div class="card p-6 rounded-2xl mb-6">
-        <div class="flex flex-col md:flex-row gap-4">
+        <div class="flex flex-col md:flex-row gap-4 md:items-center">
           <div class="flex-1">
             <div class="relative">
               <input
                 v-model="searchQuery"
+                @input="onSearchMembers"
                 type="text"
-                placeholder="Search members..."
+                placeholder="Search by name/email/referral code..."
                 class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
               />
               <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,6 +100,7 @@
           <div class="flex gap-2">
             <select
               v-model="statusFilter"
+              @change="offset=0; loadMembers()"
               class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
             >
               <option value="">All Status</option>
@@ -108,14 +110,25 @@
             </select>
             <select
               v-model="levelFilter"
+              @change="offset=0; loadMembers()"
               class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
             >
               <option value="">All Levels</option>
+              <option value="CUSTOMER">Customer</option>
               <option value="CHIEF">Chief</option>
               <option value="MAYOR">Mayor</option>
               <option value="GOVERNOR">Governor</option>
               <option value="MINISTER">Minister</option>
               <option value="PRESIDENT">President</option>
+            </select>
+            <select
+              v-model.number="limit"
+              @change="offset=0; loadMembers()"
+              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
+            >
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
             </select>
           </div>
         </div>
@@ -127,28 +140,17 @@
           <table class="w-full">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Member
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Level
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Join Date
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Balance
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th @click="toggleSortMembers('id')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th @click="toggleSortMembers('join_date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Join Date</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="member in filteredMembers" :key="member.id" class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ member.id }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center">
                     <div class="flex-shrink-0 h-10 w-10">
@@ -157,15 +159,16 @@
                       </div>
                     </div>
                     <div class="ml-4">
-                      <div class="text-sm font-medium text-gray-900">
-                        <button 
-                          @click="showUplineDownline(member)" 
-                          class="hover:text-ocean hover:underline cursor-pointer"
-                        >
-                          {{ member.name }}
+                      <div class="text-sm font-medium text-gray-900">{{ member.email }}</div>
+                      <div class="text-sm">
+                        <button v-if="member.referralCode"
+                                @click="openAddDownline(member)"
+                                class="text-ocean hover:text-deep-ocean hover:underline"
+                                title="Add direct downline under this member">
+                          {{ member.referralCode }}
                         </button>
+                        <span v-else class="text-gray-500">N/A</span>
                       </div>
-                      <div class="text-sm text-gray-500">{{ member.email }}</div>
                     </div>
                   </div>
                 </td>
@@ -185,45 +188,31 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   ${{ member.balance.toLocaleString() }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div class="flex space-x-2">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium relative">
+                  <div class="inline-flex items-center">
                     <button
-                      @click="editMember(member)"
-                      class="text-ocean hover:text-deep-ocean"
+                      class="px-2 py-1 rounded hover:bg-gray-100"
+                      @click="openActions(member, $event)"
+                      title="Actions"
                     >
-                      Edit
-                    </button>
-                    <button
-                      @click="viewMember(member)"
-                      class="text-forest-green hover:text-green-700"
-                    >
-                      View
-                    </button>
-                    <button
-                      @click="openWallets(member)"
-                      class="text-purple-600 hover:text-purple-700"
-                    >
-                      Wallets
-                    </button>
-                    <button
-                      @click="showUplineDownline(member)"
-                      class="text-blue-600 hover:text-blue-700"
-                    >
-                      Network
-                    </button>
-                    <button
-                      @click="showNetworkGraph(member)"
-                      class="text-indigo-600 hover:text-indigo-700"
-                    >
-                      Graph
-                    </button>
-                    <button
-                      @click="toggleMemberStatus(member)"
-                      :class="member.status === 'active' ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'"
-                    >
-                      {{ member.status === 'active' ? 'Suspend' : 'Activate' }}
+                      ⋯
                     </button>
                   </div>
+
+                  <teleport to="body">
+                    <div
+                      v-if="actions.open && actions.member?.id === member.id"
+                      class="fixed z-[1000] bg-white border border-gray-200 rounded-md shadow-lg w-44 py-1"
+                      :style="{ top: actions.pos.top + 'px', left: actions.pos.left + 'px' }"
+                      :ref="setActionsMenuEl"
+                    >
+                      <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionEdit()">Edit</button>
+                      <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionView()">View</button>
+                      <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionWallets()">Wallets</button>
+                      <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionGraph()">Graph</button>
+                      <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionToggle()">{{ actions.member?.status === 'active' ? 'Suspend' : 'Activate' }}</button>
+                    </div>
+                  </teleport>
                 </td>
               </tr>
             </tbody>
@@ -274,6 +263,7 @@
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
               >
+                <option value="CUSTOMER">Customer</option>
                 <option value="CHIEF">Chief</option>
                 <option value="MAYOR">Mayor</option>
                 <option value="GOVERNOR">Governor</option>
@@ -369,6 +359,7 @@
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
               >
+                <option value="CUSTOMER">Customer</option>
                 <option value="CHIEF">Chief</option>
                 <option value="MAYOR">Mayor</option>
                 <option value="GOVERNOR">Governor</option>
@@ -774,26 +765,75 @@
       </div>
     </div>
 
-    <!-- Network Graph Modal -->
+    <!-- Graph Modal (Unified Graph + Table like My Team) -->
     <div v-if="showNetworkGraphModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <EChartsNetworkGraph
+      <UserNetworkGraph
         :selected-user="selectedUser"
-        :uplines="uplines"
         :downlines="downlines"
         :loading="uplineDownlineLoading"
         @close="showNetworkGraphModal = false"
       />
     </div>
+
+    <!-- Add Direct Downline Modal -->
+    <div v-if="showAddDownlineModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <h3 class="text-lg font-bold text-deep-ocean mb-4">Add Direct Downline</h3>
+        <p class="text-sm text-gray-600 mb-4">Upline: {{ downlineSelected?.email }} · Referral Code: {{ downlineSelected?.referralCode }}</p>
+        <form @submit.prevent="submitAddDownline">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <input v-model="addDownlineForm.email" type="email" required autocomplete="off" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent" />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                <input v-model="addDownlineForm.firstName" type="text" autocomplete="off" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                <input v-model="addDownlineForm.lastName" type="text" autocomplete="off" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <input v-model="addDownlineForm.phone" type="tel" autocomplete="off" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input v-model="addDownlineForm.password" type="password" autocomplete="new-password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Member Level</label>
+              <select v-model="addDownlineForm.level" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent">
+                <option value="CUSTOMER">Customer</option>
+                <option value="CHIEF">Chief</option>
+                <option value="MAYOR">Mayor</option>
+                <option value="GOVERNOR">Governor</option>
+                <option value="MINISTER">Minister</option>
+                <option value="PRESIDENT">President</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex justify-end space-x-3 mt-6">
+            <button type="button" @click="showAddDownlineModal = false" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button type="submit" class="btn-primary px-4 py-2 rounded-lg">Add</button>
+          </div>
+          <p v-if="downlineMsg" class="mt-3 text-sm" :class="downlineOk ? 'text-green-600' : 'text-red-600'">{{ downlineMsg }}</p>
+        </form>
+      </div>
+    </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getWalletsByUserId, transferBetweenWallets, withdrawFromWallet, getWallets, createWallet, getUserNetwork, updateUser, createUser } from '../../utils/api.js'
+import { getWalletsByUserId, transferBetweenWallets, withdrawFromWallet, getWallets, createWallet, getUserNetwork, updateUser, createUser, getUsersPaged, addDownline } from '../../utils/api.js'
 import AppLayout from '../layouts/AppLayout.vue'
 import NetworkGraph from './NetworkGraph.vue'
-import EChartsNetworkGraph from './EChartsNetworkGraph.vue'
+import UserNetworkGraph from '../user/UserNetworkGraph.vue'
 
 const router = useRouter()
 const showAddModal = ref(false)
@@ -829,49 +869,19 @@ const newWallet = ref({
   walletType: 'MAIN'
 })
 
+// filters & pagination
 const searchQuery = ref('')
-const statusFilter = ref('')
-const levelFilter = ref('')
+const statusFilter = ref('') // active/inactive/suspended
+const levelFilter = ref('')  // CHIEF/MAYOR/...
+const total = ref(0)
+const offset = ref(0)
+const limit = ref(50)
+const sort = ref('created_at')
+const order = ref('desc')
+let searchTimer = null
 
-// Sample data - in real app this would come from API
-const members = ref([
-  {
-    id: 1,
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    level: 'CHIEF',
-    status: 'active',
-    joinDate: '2024-01-15',
-    balance: 2500
-  },
-  {
-    id: 2,
-    name: 'Jane Smith',
-    email: 'jane.smith@example.com',
-    level: 'MAYOR',
-    status: 'active',
-    joinDate: '2023-11-20',
-    balance: 5000
-  },
-  {
-    id: 3,
-    name: 'Bob Johnson',
-    email: 'bob.johnson@example.com',
-    level: 'GOVERNOR',
-    status: 'inactive',
-    joinDate: '2024-02-10',
-    balance: 800
-  },
-  {
-    id: 4,
-    name: 'Alice Brown',
-    email: 'alice.brown@example.com',
-    level: 'MINISTER',
-    status: 'active',
-    joinDate: '2024-03-05',
-    balance: 300
-  }
-])
+const members = ref([])
+const loadingMembers = ref(false)
 
 const newMember = ref({
   name: '',
@@ -899,35 +909,127 @@ const newMembersThisMonth = computed(() => {
   }).length
 })
 
-const filteredMembers = computed(() => {
-  let filtered = members.value
-
-  if (searchQuery.value) {
-    filtered = filtered.filter(member => 
-      member.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchQuery.value.toLowerCase())
-    )
-  }
-
-  if (statusFilter.value) {
-    filtered = filtered.filter(member => member.status === statusFilter.value)
-  }
-
-  if (levelFilter.value) {
-    filtered = filtered.filter(member => member.level === levelFilter.value)
-  }
-
-  return filtered
-})
+const filteredMembers = computed(() => members.value)
 
 // Methods
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString()
 }
+const loadMembers = async () => {
+  loadingMembers.value = true
+  try {
+    const resp = await getUsersPaged({
+      offset: offset.value,
+      limit: limit.value,
+      sort: sort.value,
+      order: order.value,
+      status: statusFilter.value ? statusFilter.value.toUpperCase() : '',
+      level: levelFilter.value,
+      q: searchQuery.value
+    })
+    const items = resp.data || []
+    // normalize to fields used by UI
+    members.value = items.map(u => ({
+      id: u.id,
+      name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
+      email: u.email,
+      referralCode: u.referralCode || '',
+      level: u.level || 'CHIEF',
+      status: (u.status || 'ACTIVE').toLowerCase(),
+      joinDate: u.joinDate || u.createdAt || new Date().toISOString(),
+      balance: u.balance || 0
+    }))
+    total.value = resp.total || 0
+  } catch (e) {
+    members.value = []
+    total.value = 0
+  } finally {
+    loadingMembers.value = false
+  }
+}
+
+const toggleSortMembers = (col) => {
+  if (sort.value === col) {
+    order.value = order.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sort.value = col
+    order.value = 'desc'
+  }
+  offset.value = 0
+  loadMembers()
+}
+
+const onSearchMembers = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    offset.value = 0
+    loadMembers()
+  }, 300)
+}
+
+const totalPages = () => Math.max(1, Math.ceil((total.value || 0) / (limit.value || 50)))
+const currentPage = () => Math.floor((offset.value || 0) / (limit.value || 50)) + 1
+const goToPage = (page) => {
+  const tp = totalPages()
+  const p = Math.min(tp, Math.max(1, page))
+  offset.value = (p - 1) * limit.value
+  loadMembers()
+}
+
+onMounted(() => {
+  loadMembers()
+})
 
 const formatDateTime = (dateString) => {
   if (!dateString) return 'N/A'
   return new Date(dateString).toLocaleString()
+}
+
+// Add Downline Modal state & handlers
+const showAddDownlineModal = ref(false)
+const addDownlineForm = ref({ email: '', firstName: '', lastName: '', phone: '', password: '', level: 'CUSTOMER' })
+const downlineSelected = ref(null)
+const downlineMsg = ref('')
+const downlineOk = ref(false)
+
+const openAddDownline = (member) => {
+  downlineSelected.value = member
+  addDownlineForm.value = { email: '', firstName: '', lastName: '', phone: '', password: '', level: 'CUSTOMER' }
+  downlineMsg.value = ''
+  downlineOk.value = false
+  showAddDownlineModal.value = true
+}
+
+const submitAddDownline = async () => {
+  downlineMsg.value = ''
+  downlineOk.value = false
+  try {
+    if (!downlineSelected.value) return
+    const payload = {
+      email: addDownlineForm.value.email,
+      firstName: addDownlineForm.value.firstName || '',
+      lastName: addDownlineForm.value.lastName || '',
+      referralCode: downlineSelected.value.referralCode
+    }
+    if (addDownlineForm.value.level) {
+      payload.level = addDownlineForm.value.level
+    }
+    if (addDownlineForm.value.phone && addDownlineForm.value.phone.trim() !== '') {
+      payload.phone = addDownlineForm.value.phone
+    }
+    if (addDownlineForm.value.password && addDownlineForm.value.password.trim() !== '') {
+      payload.password = addDownlineForm.value.password
+    }
+    const resp = await addDownline(downlineSelected.value.id, payload)
+    downlineOk.value = !!resp.success
+    downlineMsg.value = resp.message || (resp.success ? 'Downline added successfully' : (resp.error || 'Failed to add downline'))
+    if (resp.success) {
+      showAddDownlineModal.value = false
+    }
+  } catch (e) {
+    downlineOk.value = false
+    downlineMsg.value = e.message || 'Failed to add downline'
+  }
 }
 
 const getLevelBadgeClass = (level) => {
@@ -1111,6 +1213,51 @@ const viewMember = (member) => {
 const toggleMemberStatus = (member) => {
   member.status = member.status === 'active' ? 'suspended' : 'active'
 }
+
+// Actions dropdown state
+const actions = ref({ open: false, member: null, pos: { top: 0, left: 0 } })
+let actionsMenuEl = null
+let actionsTriggerEl = null
+
+const openActions = async (member, evt) => {
+  actions.value.member = member
+  await nextTick()
+  actionsTriggerEl = evt.currentTarget
+  const rect = actionsTriggerEl.getBoundingClientRect()
+  actions.value.pos = { top: rect.bottom + 4, left: Math.min(rect.left, window.innerWidth - 200) }
+  actions.value.open = true
+}
+
+const closeActions = () => { actions.value.open = false; actions.value.member = null }
+
+const onGlobalClick = (e) => {
+  if (!actions.value.open) return
+  const menu = actionsMenuEl
+  if (menu && typeof menu.contains === 'function' && menu.contains(e.target)) return
+  if (actionsTriggerEl && actionsTriggerEl.contains(e.target)) return
+  closeActions()
+}
+const setActionsMenuEl = (el) => { actionsMenuEl = el }
+const onGlobalScroll = () => { if (actions.value.open) closeActions() }
+const onGlobalResize = () => { if (actions.value.open) closeActions() }
+
+onMounted(() => {
+  window.addEventListener('click', onGlobalClick, false)
+  window.addEventListener('scroll', onGlobalScroll, true)
+  window.addEventListener('resize', onGlobalResize, true)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('click', onGlobalClick, false)
+  window.removeEventListener('scroll', onGlobalScroll, true)
+  window.removeEventListener('resize', onGlobalResize, true)
+})
+
+// Action handlers
+const actionEdit = () => { if (actions.value.member) editMember(actions.value.member); closeActions() }
+const actionView = () => { if (actions.value.member) viewMember(actions.value.member); closeActions() }
+const actionWallets = () => { if (actions.value.member) openWallets(actions.value.member); closeActions() }
+const actionGraph = () => { if (actions.value.member) showNetworkGraph(actions.value.member); closeActions() }
+const actionToggle = () => { if (actions.value.member) toggleMemberStatus(actions.value.member); closeActions() }
 
 // Wallet management functions
 const openWallets = async (member) => {
@@ -1386,6 +1533,8 @@ const generateRandomAddress = () => {
 const showUplineDownline = async (member) => {
   selectedUser.value = member
   uplineDownlineLoading.value = true
+  // Open modal immediately to give instant feedback
+  showUplineDownlineModal.value = true
   
   try {
     console.log('Fetching network data for user ID:', member.id)
@@ -1395,7 +1544,7 @@ const showUplineDownline = async (member) => {
     if (response && response.success) {
       uplines.value = response.data.uplines || []
       downlines.value = response.data.downlines || []
-      showUplineDownlineModal.value = true
+      // already opened
     } else {
       console.error('API returned success: false')
       transactionMsg.value = response?.error || 'Failed to load network data.'
@@ -1405,7 +1554,7 @@ const showUplineDownline = async (member) => {
     console.error('Error loading upline/downline data:', error)
     // 如果API失败，使用模拟数据作为后备
     await simulateUplineDownlineData(member.id)
-    showUplineDownlineModal.value = true
+    // already opened
   } finally {
     uplineDownlineLoading.value = false
   }

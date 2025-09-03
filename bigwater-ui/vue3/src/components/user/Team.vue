@@ -137,11 +137,12 @@
                         </div>
                         <div>
                           <p class="font-medium text-gray-900">{{ member.name }}</p>
-                          <p class="text-sm text-gray-500 cursor-pointer hover:text-ocean hover:underline" 
-                             @click="addDirectDownline(member)" 
+                          <p v-if="member.referralCode" class="text-sm text-ocean cursor-pointer hover:text-deep-ocean hover:underline font-mono"
+                             @click="addDirectDownline(member)"
                              :title="`Click to add direct downline under ${member.name}`">
-                            {{ member.email }}
+                            {{ member.referralCode }}
                           </p>
+                          <p v-else class="text-sm text-gray-400 font-mono">N/A</p>
                         </div>
                       </div>
                     </td>
@@ -199,11 +200,12 @@
                         </div>
                         <div>
                           <p class="font-medium text-gray-900">{{ member.name }}</p>
-                          <p class="text-sm text-gray-500 cursor-pointer hover:text-ocean hover:underline" 
-                             @click="addDirectDownline(member)" 
+                          <p v-if="member.referralCode" class="text-sm text-ocean cursor-pointer hover:text-deep-ocean hover:underline font-mono"
+                             @click="addDirectDownline(member)"
                              :title="`Click to add direct downline under ${member.name}`">
-                            {{ member.email }}
+                            {{ member.referralCode }}
                           </p>
+                          <p v-else class="text-sm text-gray-400 font-mono">N/A</p>
                         </div>
                       </div>
                     </td>
@@ -261,11 +263,12 @@
                         </div>
                         <div>
                           <p class="font-medium text-gray-900">{{ member.name }}</p>
-                          <p class="text-sm text-gray-500 cursor-pointer hover:text-ocean hover:underline" 
-                             @click="addDirectDownline(member)" 
+                          <p v-if="member.referralCode" class="text-sm text-ocean cursor-pointer hover:text-deep-ocean hover:underline font-mono"
+                             @click="addDirectDownline(member)"
                              :title="`Click to add direct downline under ${member.name}`">
-                            {{ member.email }}
+                            {{ member.referralCode }}
                           </p>
+                          <p v-else class="text-sm text-gray-400 font-mono">N/A</p>
                         </div>
                       </div>
                     </td>
@@ -445,15 +448,29 @@
               </div>
               
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
                 <input
                   v-model="newDownlineForm.password"
                   type="password"
-                  placeholder="Enter password"
+                  placeholder="Enter password (optional)"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-ocean focus:border-ocean"
                   autocomplete="new-password"
-                  required
                 />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Member Level</label>
+                <select
+                  v-model="newDownlineForm.level"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-ocean focus:border-ocean"
+                >
+                  <option value="CUSTOMER">Customer</option>
+                  <option value="CHIEF">Chief</option>
+                  <option value="MAYOR">Mayor</option>
+                  <option value="GOVERNOR">Governor</option>
+                  <option value="MINISTER">Minister</option>
+                  <option value="PRESIDENT">President</option>
+                </select>
               </div>
               
               <div class="grid grid-cols-2 gap-3 mt-2">
@@ -512,7 +529,8 @@ const newDownlineForm = ref({
   firstName: '',
   lastName: '',
   phone: '',
-  password: ''
+  password: '',
+  level: 'CUSTOMER'
 })
 
 // Real team data from API
@@ -712,17 +730,21 @@ const submitAddDownline = async () => {
     return
   }
   
-  if (!newDownlineForm.value.password) {
-    alert('Password is required')
-    return
-  }
+  // Password is optional; only include when provided
   
   addingDownline.value = true
   try {
     // Include referralCode directly from the selected member to boost performance
     const downlineData = {
-      ...newDownlineForm.value,
-      referralCode: selectedMember.value.referralCode
+      email: newDownlineForm.value.email,
+      firstName: newDownlineForm.value.firstName || '',
+      lastName: newDownlineForm.value.lastName || '',
+      phone: newDownlineForm.value.phone || '',
+      referralCode: selectedMember.value.referralCode,
+      level: newDownlineForm.value.level || 'CUSTOMER'
+    }
+    if (newDownlineForm.value.password && newDownlineForm.value.password.trim() !== '') {
+      downlineData.password = newDownlineForm.value.password
     }
     
     const response = await apiService.addDownline(selectedMember.value.id, downlineData)

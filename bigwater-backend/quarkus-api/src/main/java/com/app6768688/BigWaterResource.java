@@ -145,13 +145,37 @@ public class BigWaterResource {
     @GET
     @Path("/users")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllUsers() {
+    public Response getUsers(
+        @QueryParam("offset") Integer offset,
+        @QueryParam("limit") Integer limit,
+        @QueryParam("sort") String sort,
+        @QueryParam("order") String order,
+        @QueryParam("role") String role,
+        @QueryParam("status") String status,
+        @QueryParam("level") String level,
+        @QueryParam("q") String q
+    ) {
         try {
-            List<User> users = userService.findAll();
+            com.app6768688.repository.UserRepository.UserQuery query = new com.app6768688.repository.UserRepository.UserQuery();
+            query.offset = offset;
+            query.limit = limit;
+            query.sortBy = sort;
+            query.order = order;
+            query.role = role;
+            query.status = status;
+            query.level = level;
+            query.q = q;
+
+            long total = userService.countByQuery(query);
+            List<User> items = userService.findByQuery(query);
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", users);
-            response.put("count", users.size());
+            response.put("data", items);
+            response.put("total", total);
+            response.put("count", items.size());
+            response.put("offset", query.offset != null ? query.offset : 0);
+            response.put("limit", query.limit != null ? query.limit : 50);
             
             return Response.ok(response).build();
         } catch (Exception e) {
@@ -701,13 +725,35 @@ public class BigWaterResource {
     @GET
     @Path("/wallets")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllWallets() {
+    public Response getWallets(
+        @QueryParam("offset") Integer offset,
+        @QueryParam("limit") Integer limit,
+        @QueryParam("sort") String sort,
+        @QueryParam("order") String order,
+        @QueryParam("type") String type,
+        @QueryParam("active") Boolean active,
+        @QueryParam("q") String q
+    ) {
         try {
-            List<UsdtWallet> wallets = walletService.findAll();
+            com.app6768688.repository.WalletRepository.WalletQuery query = new com.app6768688.repository.WalletRepository.WalletQuery();
+            query.offset = offset;
+            query.limit = limit;
+            query.sortBy = sort;
+            query.order = order;
+            query.type = type;
+            query.active = active;
+            query.q = q;
+
+            long total = walletService.countByQuery(query);
+            List<UsdtWallet> items = walletService.findByQuery(query);
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", wallets);
-            response.put("count", wallets.size());
+            response.put("data", items);
+            response.put("total", total);
+            response.put("count", items.size());
+            response.put("offset", query.offset != null ? query.offset : 0);
+            response.put("limit", query.limit != null ? query.limit : 50);
             
             return Response.ok(response).build();
         } catch (Exception e) {

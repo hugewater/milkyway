@@ -137,6 +137,97 @@ public class UserRepository {
         }
     }
 
+    public static class UserQuery {
+        public Integer offset;
+        public Integer limit;
+        public String sortBy; // created_at, id, last_login, join_date
+        public String order;  // asc/desc
+        public String role;   // SUBSCRIBER/ADMIN/SUPER_ADMIN
+        public String status; // ACTIVE/INACTIVE/SUSPENDED
+        public String level;  // CHIEF/MAYOR/...
+        public String q;      // name/email/referral_code like
+    }
+
+    public long countByQuery(UserQuery q) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM users WHERE 1=1");
+        java.util.List<Object> params = new java.util.ArrayList<>();
+        buildWhere(sql, params, q);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = prepare(conn, sql.toString(), params);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) return rs.getLong(1);
+            return 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error counting users", e);
+        }
+    }
+
+    public List<User> findByQuery(UserQuery q) {
+        StringBuilder sql = new StringBuilder("SELECT * FROM users WHERE 1=1");
+        java.util.List<Object> params = new java.util.ArrayList<>();
+        buildWhere(sql, params, q);
+        String sortCol = switch (q.sortBy != null ? q.sortBy : "created_at") {
+            case "id" -> "id";
+            case "last_login" -> "last_login";
+            case "join_date" -> "join_date";
+            case "created_at" -> "created_at";
+            default -> "created_at";
+        };
+        String order = (q.order != null && q.order.equalsIgnoreCase("asc")) ? "ASC" : "DESC";
+        sql.append(" ORDER BY ").append(sortCol).append(" ").append(order);
+        int limit = q.limit != null ? Math.max(1, Math.min(q.limit, 200)) : 50;
+        int offset = q.offset != null ? Math.max(0, q.offset) : 0;
+        sql.append(" LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+
+        List<User> users = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = prepare(conn, sql.toString(), params);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) users.add(mapResultSetToUser(rs));
+            return users;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error querying users", e);
+        }
+    }
+
+    private void buildWhere(StringBuilder sql, java.util.List<Object> params, UserQuery q) {
+        if (q == null) return;
+        if (q.role != null && !q.role.isBlank()) {
+            sql.append(" AND role = ?");
+            params.add(q.role);
+        }
+        if (q.status != null && !q.status.isBlank()) {
+            sql.append(" AND status = ?");
+            params.add(q.status);
+        }
+        if (q.level != null && !q.level.isBlank()) {
+            sql.append(" AND level = ?");
+            params.add(q.level);
+        }
+        if (q.q != null && !q.q.isBlank()) {
+            sql.append(" AND (CONCAT(IFNULL(first_name,''),' ',IFNULL(last_name,'')) LIKE ? OR email LIKE ? OR referral_code LIKE ?)");
+            String like = "%" + q.q.trim() + "%";
+            params.add(like);
+            params.add(like);
+            params.add(like);
+        }
+    }
+
+    private PreparedStatement prepare(Connection conn, String sql, java.util.List<Object> params) throws SQLException {
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        for (int i = 0; i < params.size(); i++) {
+            Object p = params.get(i);
+            if (p instanceof String s) stmt.setString(i + 1, s);
+            else if (p instanceof Integer n) stmt.setInt(i + 1, n);
+            else if (p instanceof Long l) stmt.setLong(i + 1, l);
+            else if (p instanceof Boolean b) stmt.setBoolean(i + 1, b);
+            else stmt.setObject(i + 1, p);
+        }
+        return stmt;
+    }
+
     public List<User> findByStatus(User.UserStatus status) {
         String sql = "SELECT * FROM users WHERE status = ? ORDER BY created_at DESC";
         List<User> users = new ArrayList<>();

@@ -73,6 +73,19 @@ class ApiService {
     return this.request('/users')
   }
 
+  async getUsersPaged({ offset = 0, limit = 50, sort = 'created_at', order = 'desc', role = '', status = '', level = '', q = '' } = {}) {
+    const params = new URLSearchParams()
+    params.set('offset', offset)
+    params.set('limit', limit)
+    if (sort) params.set('sort', sort)
+    if (order) params.set('order', order)
+    if (role) params.set('role', role)
+    if (status) params.set('status', status)
+    if (level) params.set('level', level)
+    if (q) params.set('q', q)
+    return this.request(`/users?${params.toString()}`)
+  }
+
   async getUserById(id) {
     return this.request(`/users/${id}`)
   }
@@ -192,6 +205,18 @@ class ApiService {
     return this.request('/wallets')
   }
 
+  async getWalletsPaged({ offset = 0, limit = 50, sort = 'created_at', order = 'desc', type = '', active = undefined, q = '' } = {}) {
+    const params = new URLSearchParams()
+    params.set('offset', offset)
+    params.set('limit', limit)
+    if (sort) params.set('sort', sort)
+    if (order) params.set('order', order)
+    if (type) params.set('type', type)
+    if (typeof active === 'boolean') params.set('active', active ? 'true' : 'false')
+    if (q) params.set('q', q)
+    return this.request(`/wallets?${params.toString()}`)
+  }
+
   async getWalletsByUserId(userId) {
     return this.request(`/wallets/user/${userId}`)
   }
@@ -294,6 +319,7 @@ export const login = apiService.login.bind(apiService)
 export const register = apiService.register.bind(apiService)
 export const validateToken = apiService.validateToken.bind(apiService)
 export const getUsers = apiService.getUsers.bind(apiService)
+export const getUsersPaged = apiService.getUsersPaged.bind(apiService)
 export const getUserById = apiService.getUserById.bind(apiService)
 export const getUserStats = apiService.getUserStats.bind(apiService)
 export const createUser = apiService.createUser.bind(apiService)
@@ -315,6 +341,7 @@ export const updateJournal = apiService.updateJournal.bind(apiService)
 export const deleteJournal = apiService.deleteJournal.bind(apiService)
 export const getJournalStats = apiService.getJournalStats.bind(apiService)
 export const getWallets = apiService.getWallets.bind(apiService)
+export const getWalletsPaged = apiService.getWalletsPaged.bind(apiService)
 export const getWalletsByUserId = apiService.getWalletsByUserId.bind(apiService)
 export const createWallet = apiService.createWallet.bind(apiService)
 export const getWalletStats = apiService.getWalletStats.bind(apiService)

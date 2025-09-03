@@ -73,6 +73,14 @@ public class WalletService {
         return walletRepository.findAll();
     }
 
+    public List<UsdtWallet> findByQuery(WalletRepository.WalletQuery q) {
+        return walletRepository.findByQuery(q);
+    }
+
+    public long countByQuery(WalletRepository.WalletQuery q) {
+        return walletRepository.countByQuery(q);
+    }
+
     public List<UsdtWallet> findVerified() {
         return walletRepository.findVerified();
     }

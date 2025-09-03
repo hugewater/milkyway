@@ -220,6 +220,92 @@ public class WalletRepository {
         }
     }
 
+    public static class WalletQuery {
+        public Integer offset;
+        public Integer limit;
+        public String sortBy; // id, created_at, balance
+        public String order;  // asc/desc
+        public String type;   // wallet_type
+        public Boolean active; // is_active
+        public String q;      // wallet_name/address like
+    }
+
+    public long countByQuery(WalletQuery q) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM usdt_wallets WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+        buildWhere(sql, params, q);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = prepare(conn, sql.toString(), params);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) return rs.getLong(1);
+            return 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error counting wallets", e);
+        }
+    }
+
+    public List<UsdtWallet> findByQuery(WalletQuery q) {
+        StringBuilder sql = new StringBuilder("SELECT * FROM usdt_wallets WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+        buildWhere(sql, params, q);
+        // sorting
+        String sortCol = switch (q.sortBy != null ? q.sortBy : "created_at") {
+            case "id" -> "id";
+            case "balance" -> "balance";
+            case "created_at" -> "created_at";
+            default -> "created_at";
+        };
+        String order = (q.order != null && q.order.equalsIgnoreCase("asc")) ? "ASC" : "DESC";
+        sql.append(" ORDER BY ").append(sortCol).append(" ").append(order);
+        // paging
+        int limit = q.limit != null ? Math.max(1, Math.min(q.limit, 200)) : 50;
+        int offset = q.offset != null ? Math.max(0, q.offset) : 0;
+        sql.append(" LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+
+        List<UsdtWallet> wallets = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = prepare(conn, sql.toString(), params);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) wallets.add(mapResultSetToWallet(rs));
+            return wallets;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error querying wallets", e);
+        }
+    }
+
+    private void buildWhere(StringBuilder sql, List<Object> params, WalletQuery q) {
+        if (q == null) return;
+        if (q.type != null && !q.type.isBlank()) {
+            sql.append(" AND wallet_type = ?");
+            params.add(q.type);
+        }
+        if (q.active != null) {
+            sql.append(" AND is_active = ?");
+            params.add(q.active);
+        }
+        if (q.q != null && !q.q.isBlank()) {
+            sql.append(" AND (wallet_name LIKE ? OR wallet_address LIKE ?)");
+            String like = "%" + q.q.trim() + "%";
+            params.add(like);
+            params.add(like);
+        }
+    }
+
+    private PreparedStatement prepare(Connection conn, String sql, List<Object> params) throws SQLException {
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        for (int i = 0; i < params.size(); i++) {
+            Object p = params.get(i);
+            if (p instanceof String s) stmt.setString(i + 1, s);
+            else if (p instanceof Integer n) stmt.setInt(i + 1, n);
+            else if (p instanceof Long l) stmt.setLong(i + 1, l);
+            else if (p instanceof Boolean b) stmt.setBoolean(i + 1, b);
+            else stmt.setObject(i + 1, p);
+        }
+        return stmt;
+    }
+
     @Transactional
     public UsdtWallet update(UsdtWallet wallet) {
         String sql = """
