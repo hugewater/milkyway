@@ -10,9 +10,12 @@
           
           <div class="grid md:grid-cols-2 gap-6">
             <div>
-              <img src="https://via.placeholder.com/400x300/0077be/ffffff?text=Week+45+Journal" 
+              <img 
+                   src="https://via.placeholder.com/400x300/0077be/ffffff?text=Week+45+Journal" 
                    alt="Week 45 Journal Cover" 
-                   class="w-full h-48 object-cover rounded-lg mb-4">
+                   class="w-full h-48 object-cover rounded-lg mb-4"
+                   @error="(e)=>{ e.target.src='/vite.svg' }"
+              >
             </div>
             <div>
               <h3 class="text-lg font-semibold text-deep-ocean mb-3">November Special Edition</h3>
@@ -49,9 +52,12 @@
           <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <!-- Week 44 -->
             <div class="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <img src="https://via.placeholder.com/300x200/228b22/ffffff?text=Week+44" 
+              <img 
+                   src="https://via.placeholder.com/300x200/228b22/ffffff?text=Week+44" 
                    alt="Week 44 Journal" 
-                   class="w-full h-32 object-cover rounded-lg mb-3">
+                   class="w-full h-32 object-cover rounded-lg mb-3"
+                   @error="(e)=>{ e.target.src='/vite.svg' }"
+              >
               <h3 class="font-semibold text-deep-ocean mb-2">Week 44 - Strategy Focus</h3>
               <p class="text-sm text-gray-600 mb-3">
                 Advanced techniques for number selection and pattern recognition.
@@ -66,9 +72,12 @@
 
             <!-- Week 43 -->
             <div class="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <img src="https://via.placeholder.com/300x200/40e0d0/ffffff?text=Week+43" 
+              <img 
+                   src="https://via.placeholder.com/300x200/40e0d0/ffffff?text=Week+43" 
                    alt="Week 43 Journal" 
-                   class="w-full h-32 object-cover rounded-lg mb-3">
+                   class="w-full h-32 object-cover rounded-lg mb-3"
+                   @error="(e)=>{ e.target.src='/vite.svg' }"
+              >
               <h3 class="font-semibold text-deep-ocean mb-2">Week 43 - Statistical Analysis</h3>
               <p class="text-sm text-gray-600 mb-3">
                 Deep dive into winning patterns and probability calculations.
@@ -83,9 +92,12 @@
 
             <!-- Week 42 -->
             <div class="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <img src="https://via.placeholder.com/300x200/0077be/ffffff?text=Week+42" 
+              <img 
+                   src="https://via.placeholder.com/300x200/0077be/ffffff?text=Week+42" 
                    alt="Week 42 Journal" 
-                   class="w-full h-32 object-cover rounded-lg mb-3">
+                   class="w-full h-32 object-cover rounded-lg mb-3"
+                   @error="(e)=>{ e.target.src='/vite.svg' }"
+              >
               <h3 class="font-semibold text-deep-ocean mb-2">Week 42 - Winners Circle</h3>
               <p class="text-sm text-gray-600 mb-3">
                 Featuring stories from recent winners and their strategies.
@@ -100,9 +112,12 @@
 
             <!-- Week 41 -->
             <div class="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <img src="https://via.placeholder.com/300x200/228b22/ffffff?text=Week+41" 
+              <img 
+                   src="https://via.placeholder.com/300x200/228b22/ffffff?text=Week+41" 
                    alt="Week 41 Journal" 
-                   class="w-full h-32 object-cover rounded-lg mb-3">
+                   class="w-full h-32 object-cover rounded-lg mb-3"
+                   @error="(e)=>{ e.target.src='/vite.svg' }"
+              >
               <h3 class="font-semibold text-deep-ocean mb-2">Week 41 - Tech Innovation</h3>
               <p class="text-sm text-gray-600 mb-3">
                 How AI and machine learning are changing lottery predictions.
@@ -117,9 +132,12 @@
 
             <!-- Week 40 -->
             <div class="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <img src="https://via.placeholder.com/300x200/40e0d0/ffffff?text=Week+40" 
+              <img 
+                   src="https://via.placeholder.com/300x200/40e0d0/ffffff?text=Week+40" 
                    alt="Week 40 Journal" 
-                   class="w-full h-32 object-cover rounded-lg mb-3">
+                   class="w-full h-32 object-cover rounded-lg mb-3"
+                   @error="(e)=>{ e.target.src='/vite.svg' }"
+              >
               <h3 class="font-semibold text-deep-ocean mb-2">Week 40 - Global Trends</h3>
               <p class="text-sm text-gray-600 mb-3">
                 International lottery trends and cross-market analysis.
@@ -134,9 +152,12 @@
 
             <!-- Week 39 -->
             <div class="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <img src="https://via.placeholder.com/300x200/0077be/ffffff?text=Week+39" 
+              <img 
+                   src="https://via.placeholder.com/300x200/0077be/ffffff?text=Week+39" 
                    alt="Week 39 Journal" 
-                   class="w-full h-32 object-cover rounded-lg mb-3">
+                   class="w-full h-32 object-cover rounded-lg mb-3"
+                   @error="(e)=>{ e.target.src='/vite.svg' }"
+              >
               <h3 class="font-semibold text-deep-ocean mb-2">Week 39 - Psychology of Winning</h3>
               <p class="text-sm text-gray-600 mb-3">
                 Understanding the mindset and habits of consistent winners.

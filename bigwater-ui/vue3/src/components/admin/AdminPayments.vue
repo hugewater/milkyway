@@ -157,7 +157,7 @@
           Refresh
         </button>
       </div>
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto overflow-y-visible">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -179,21 +179,24 @@
               <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(w.createdAt || w.created_at) }}</td>
               <td class="px-4 py-2 text-sm">
                 <div class="relative inline-block text-left" data-wallet-actions-menu>
-                  <button @click="toggleActions(w.id)"
+                  <button @click="toggleActions(w.id, $event)"
                     class="inline-flex justify-center w-9 h-9 items-center rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6h.01M12 12h.01M12 18h.01"></path>
                     </svg>
                   </button>
-                  <div v-if="openActionId === w.id"
-                       class="origin-top-right absolute right-0 mt-2 w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-                    <div class="py-1">
-                      <button @click="openViewWallet(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View</button>
-                      <button @click="openEditWallet(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit</button>
-                      <button @click="toggleStatus(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ w.isActive ? 'Deactivate' : 'Activate' }}</button>
-                      <button @click="deleteWalletRow(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Delete</button>
+                  <teleport to="body">
+                    <div v-if="openActionId === w.id"
+                         class="fixed w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                         :style="{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }">
+                      <div class="py-1">
+                        <button @click="openViewWallet(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View</button>
+                        <button @click="openEditWallet(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit</button>
+                        <button @click="toggleStatus(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ w.isActive ? 'Deactivate' : 'Activate' }}</button>
+                        <button @click="deleteWalletRow(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Delete</button>
+                      </div>
                     </div>
-                  </div>
+                  </teleport>
                 </div>
               </td>
             </tr>
@@ -278,9 +281,17 @@ const editErrorMsg = ref('')
 const selectedWallet = ref(null)
 const editWalletForm = ref({ id: null, walletName: '', walletAddress: '', walletType: 'MAIN' })
 const openActionId = ref(null)
+const menuPos = ref({ top: 0, left: 0 })
 
-const toggleActions = (id) => {
-  openActionId.value = openActionId.value === id ? null : id
+const toggleActions = (id, evt) => {
+  if (openActionId.value === id) {
+    openActionId.value = null
+    return
+  }
+  openActionId.value = id
+  const rect = evt.currentTarget.getBoundingClientRect()
+  // 放到按钮右下角
+  menuPos.value = { top: rect.bottom + window.scrollY + 8, left: rect.right + window.scrollX - 176 }
 }
 const closeActions = () => { openActionId.value = null }
 

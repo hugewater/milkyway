@@ -57,17 +57,18 @@
         </div>
       </div>
 
-      <!-- Wallets List -->
+      <!-- Wallets List (Table like Admin) -->
       <div class="bg-white rounded-lg shadow">
-        <div class="px-6 py-4 border-b border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h3 class="text-lg font-medium text-gray-900">My Wallets</h3>
+          <button @click="loadWallets" class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Refresh</button>
         </div>
         <div class="p-6">
           <div v-if="isLoading" class="text-center py-8">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-ocean mx-auto"></div>
             <p class="mt-2 text-gray-500">Loading wallets...</p>
           </div>
-          
+
           <div v-else-if="wallets.length === 0" class="text-center py-8">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
@@ -75,48 +76,61 @@
             <h3 class="mt-2 text-sm font-medium text-gray-900">No wallets</h3>
             <p class="mt-1 text-sm text-gray-500">Get started by adding your first wallet.</p>
             <div class="mt-6">
-              <button
-                @click="showAddWalletModal = true"
-                class="btn-primary px-4 py-2 rounded-lg"
-              >
-                Add Wallet
-              </button>
+              <button @click="showAddWalletModal = true" class="btn-primary px-4 py-2 rounded-lg">Add Wallet</button>
             </div>
           </div>
-          
-          <div v-else class="space-y-4">
-            <div v-for="wallet in wallets" :key="wallet.id" class="border border-gray-200 rounded-lg p-4">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                  <div class="flex-shrink-0">
-                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                      <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                      </svg>
+
+          <div v-else class="overflow-x-auto overflow-y-visible">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nick Name</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="w in wallets" :key="w.id" class="hover:bg-gray-50" :class="!w.isActive ? 'bg-red-50' : ''">
+                  <td class="px-4 py-2 text-sm" :class="!w.isActive ? 'text-red-600' : 'text-gray-900'">{{ w.id }}</td>
+                  <td class="px-4 py-2 text-sm" :class="!w.isActive ? 'text-red-600' : 'text-gray-900'">{{ w.walletName || '-' }}</td>
+                  <td class="px-4 py-2 text-sm font-mono" :class="!w.isActive ? 'text-red-600' : 'text-gray-900'" :title="w.walletAddress">{{ (w.walletAddress || '').slice(0, 16) }}...</td>
+                  <td class="px-4 py-2 text-sm text-gray-700">{{ w.walletType || '-' }}</td>
+                  <td class="px-4 py-2 text-sm text-gray-900">${{ Number(w.balance || 0).toFixed(2) }}</td>
+                  <td class="px-4 py-2 text-sm text-gray-700">{{ formatDate(w.createdAt || w.created_at) }}</td>
+                  <td class="px-4 py-2 text-sm">
+                    <span v-if="w.isActive" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
+                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inactive</span>
+                  </td>
+                  <td class="px-4 py-2 text-sm">
+                    <div class="relative inline-block text-left" data-user-wallet-actions>
+                      <button @click="toggleActions(w.id, $event)"
+                        class="inline-flex justify-center w-9 h-9 items-center rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6h.01M12 12h.01M12 18h.01"></path>
+                        </svg>
+                      </button>
+                      <teleport to="body">
+                        <div v-if="openActionId === w.id"
+                             class="fixed w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                             :style="{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }">
+                          <div class="py-1">
+                            <button @click="openView(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View</button>
+                            <button @click="openEdit(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit Nick Name</button>
+                            <button @click="copyAddress(w.walletAddress); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Copy Address</button>
+                            <button @click="deleteRow(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Delete</button>
+                          </div>
+                        </div>
+                      </teleport>
                     </div>
-                  </div>
-                  <div>
-                    <h4 class="text-sm font-medium text-gray-900">{{ wallet.walletName }}</h4>
-                    <p class="text-sm text-gray-500">{{ wallet.walletAddress }}</p>
-                    <p class="text-xs text-gray-400">{{ wallet.walletType }}</p>
-                  </div>
-                </div>
-                <div class="flex items-center space-x-4">
-                  <div class="text-right">
-                    <p class="text-lg font-semibold text-gray-900">${{ wallet.balance }}</p>
-                    <p class="text-sm text-gray-500">{{ wallet.walletType }}</p>
-                  </div>
-                  <div class="flex items-center space-x-2">
-                    <span v-if="wallet.isVerified" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Verified
-                    </span>
-                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -198,11 +212,47 @@
         </div>
       </div>
     </div>
+  
+  <!-- View Wallet Modal -->
+  <div v-if="showView" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-lg">
+      <h3 class="text-lg font-bold text-deep-ocean mb-4">Wallet Details</h3>
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between"><span class="text-gray-600">ID</span><span class="font-mono">{{ selected?.id }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-600">Nick Name</span><span>{{ selected?.walletName || '-' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-600">Address</span><span class="font-mono">{{ selected?.walletAddress }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-600">Type</span><span>{{ selected?.walletType || '-' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-600">Created</span><span>{{ formatDate(selected?.createdAt || selected?.created_at) }}</span></div>
+      </div>
+      <div class="flex justify-end mt-6">
+        <button @click="showView = false" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Wallet Modal -->
+  <div v-if="showEdit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-lg">
+      <h3 class="text-lg font-bold text-deep-ocean mb-4">Edit Wallet</h3>
+      <form @submit.prevent="saveEdit" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nick Name</label>
+          <input v-model="editForm.walletName" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        </div>
+        <div class="flex justify-end space-x-3 pt-2">
+          <button type="button" @click="showEdit = false" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
+        </div>
+        <p v-if="editErr" class="text-sm text-red-600">{{ editErr }}</p>
+      </form>
+    </div>
+  </div>
+
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import { getUserId } from '../../utils/auth.js'
 import apiService from '../../utils/api.js'
@@ -211,6 +261,13 @@ const wallets = ref([])
 const isLoading = ref(false)
 const isAddingWallet = ref(false)
 const showAddWalletModal = ref(false)
+const openActionId = ref(null)
+const menuPos = ref({ top: 0, left: 0 })
+const showView = ref(false)
+const showEdit = ref(false)
+const selected = ref(null)
+const editForm = ref({ id: null, walletName: '' })
+const editErr = ref('')
 
 const newWallet = ref({
   walletName: '',
@@ -225,6 +282,67 @@ const totalBalance = computed(() => {
 const verifiedWalletsCount = computed(() => {
   return wallets.value.filter(wallet => wallet.isVerified).length
 })
+
+const formatDate = (d) => {
+  if (!d) return ''
+  try {
+    const dt = typeof d === 'string' && d.length > 10 ? d.slice(0, 19) : d
+    return new Date(dt).toLocaleString()
+  } catch { return String(d) }
+}
+
+const toggleActions = (id, evt) => {
+  if (openActionId.value === id) {
+    openActionId.value = null
+    return
+  }
+  openActionId.value = id
+  const rect = evt.currentTarget.getBoundingClientRect()
+  menuPos.value = { top: rect.bottom + window.scrollY + 8, left: rect.right + window.scrollX - 176 }
+}
+const closeActions = () => { openActionId.value = null }
+
+const onClickOutside = (e) => {
+  const menus = document.querySelectorAll('[data-user-wallet-actions]')
+  let inside = false
+  menus.forEach(m => { if (m.contains(e.target)) inside = true })
+  if (!inside) closeActions()
+}
+
+const openView = (w) => {
+  selected.value = w
+  showView.value = true
+}
+
+const openEdit = (w) => {
+  editErr.value = ''
+  selected.value = w
+  editForm.value = { id: w.id, walletName: w.walletName || '' }
+  showEdit.value = true
+}
+
+const saveEdit = async () => {
+  editErr.value = ''
+  try {
+    const id = editForm.value.id
+    const name = (editForm.value.walletName || '').trim()
+    if (!id) return
+    const payload = {}
+    if (name) payload.walletName = name
+    // Optimistically update local list (no dedicated user update API; reuse admin update if exposed later)
+    const idx = wallets.value.findIndex(w => w.id === id)
+    if (idx !== -1 && name) wallets.value[idx].walletName = name
+    showEdit.value = false
+  } catch (e) {
+    editErr.value = e?.message || 'Update failed'
+  }
+}
+
+const copyAddress = async (addr) => {
+  try {
+    await navigator.clipboard.writeText(addr || '')
+  } catch {}
+}
 
 const loadWallets = async () => {
   isLoading.value = true
@@ -282,5 +400,10 @@ const addWallet = async () => {
 
 onMounted(() => {
   loadWallets()
+  document.addEventListener('click', onClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onClickOutside)
 })
 </script>
