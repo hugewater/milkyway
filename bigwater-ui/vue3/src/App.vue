@@ -22,7 +22,8 @@ html, body {
 }
 
 #app {
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Responsive breakpoints */
@@ -30,6 +31,11 @@ html, body {
   .sidebar {
     width: 100% !important;
   }
+}
+
+/* iOS momentum scrolling */
+.ios-scroller {
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (min-width: 1024px) {

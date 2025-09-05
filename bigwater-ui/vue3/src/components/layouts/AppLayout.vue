@@ -1,10 +1,11 @@
 <template>
-  <div class="flex h-screen bg-gray-50 relative">
+  <div class="flex min-h-screen bg-gray-50 relative">
     <!-- Mobile menu button -->
     <div class="lg:hidden fixed top-4 left-4 z-50">
       <button
         @click="toggleSidebar"
-        class="p-2 rounded-md bg-ocean text-white hover:bg-deep-ocean shadow-lg"
+        class="p-2 rounded-md ocean-blue text-white hover:opacity-90 shadow-lg"
+        aria-label="Open menu"
       >
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
@@ -105,7 +106,7 @@
     </div>
 
     <!-- Main content area -->
-    <div class="flex-1 flex flex-col overflow-hidden w-full lg:ml-0">
+    <div class="flex-1 flex flex-col w-full lg:ml-0">
       <!-- Top header -->
       <header class="bg-white shadow-sm border-b border-gray-200">
         <div class="flex items-center justify-between px-4 lg:px-6 py-4">
@@ -172,7 +173,7 @@
       </header>
 
       <!-- Page content -->
-      <main class="flex-1 overflow-y-auto">
+      <main class="flex-1 overflow-y-auto ios-scroller">
         <slot />
       </main>
     </div>

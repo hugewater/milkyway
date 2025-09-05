@@ -215,7 +215,7 @@
                   </button>
                   <teleport to="body">
                     <div v-if="openActionId === w.id"
-                         class="fixed w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                         class="fixed w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-[1000]"
                          :style="{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }">
                       <div class="py-1">
                         <button @click="openViewWallet(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View</button>
@@ -439,8 +439,12 @@ const toggleActions = (id, evt) => {
   }
   openActionId.value = id
   const rect = evt.currentTarget.getBoundingClientRect()
-  // 放到按钮右下角
-  menuPos.value = { top: rect.bottom + window.scrollY + 8, left: rect.right + window.scrollX - 176 }
+  const menuWidth = 176 // w-44
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+  const left = Math.min(Math.max(8, rect.left), viewportWidth - menuWidth - 8)
+  const top = Math.min(rect.bottom + 8, viewportHeight - 8)
+  menuPos.value = { top, left }
 }
 const closeActions = () => { openActionId.value = null }
 
