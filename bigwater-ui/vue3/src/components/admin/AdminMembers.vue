@@ -552,9 +552,13 @@
               <div class="mt-1 text-sm text-gray-900 break-all">{{ selectedWallet?.walletAddress }}</div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700">To Address</label>
-              <input v-model="transactionForm.toAddress" type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent" placeholder="Enter destination wallet address">
-              <p class="text-xs text-gray-500 mt-1">Enter the external wallet address where you want to withdraw funds.</p>
+              <label class="block text-sm font-medium text-gray-700">To Company Wallet</label>
+              <select v-model="transactionForm.toWalletId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent">
+                <option v-for="cw in companyWallets" :key="cw.id" :value="cw.id">
+                  {{ cw.walletName || 'Company Wallet' }} ({{ cw.walletAddress?.slice(0, 8) }}...)
+                </option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Funds will be withdrawn to the selected company wallet.</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Current Balance</label>
@@ -853,7 +857,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getWalletsByUserId, transferBetweenWallets, withdrawFromWallet, getWallets, createWallet, getUserNetwork, updateUser, createUser, getUsersPaged, addDownline } from '../../utils/api.js'
+import { getWalletsByUserId, transferBetweenWallets, withdrawFromWallet, getWallets, createWallet, getUserNetwork, updateUser, createUser, getUsersPaged, addDownline, getTransactionsByWalletId } from '../../utils/api.js'
 import AppLayout from '../layouts/AppLayout.vue'
 import NetworkGraph from './NetworkGraph.vue'
 import UserNetworkGraph from '../user/UserNetworkGraph.vue'
@@ -868,6 +872,7 @@ const isEditing = ref(false)
 const showWalletsModal = ref(false)
 const showPayModal = ref(false)
 const showWithdrawModal = ref(false)
+const companyWallets = ref([])
 const showTransactionsModal = ref(false)
 const showAddWalletModal = ref(false)
 const showViewModal = ref(false)
@@ -1488,9 +1493,27 @@ const submitPay = async () => {
   }
 }
 
-const openWithdrawModal = (wallet) => {
+const loadCompanyWallets = async () => {
+  try {
+    const resp = await getWallets({ type: 'COMPANY', active: true })
+    companyWallets.value = resp.data || []
+  } catch (e) {
+    console.error('Failed to load company wallets:', e)
+    companyWallets.value = []
+  }
+}
+
+const openWithdrawModal = async (wallet) => {
   selectedWallet.value = wallet
-  transactionForm.value = { amount: 0, description: '', fromWalletAddress: '', toAddress: '' }
+  transactionForm.value = { amount: 0, description: '', fromWalletAddress: '', toWalletId: null }
+  
+  // 加载公司钱包并随机选择一个
+  await loadCompanyWallets()
+  if (companyWallets.value.length > 0) {
+    const randomIndex = Math.floor(Math.random() * companyWallets.value.length)
+    transactionForm.value.toWalletId = companyWallets.value[randomIndex].id
+  }
+  
   showWithdrawModal.value = true
 }
 
@@ -1510,8 +1533,16 @@ const submitWithdraw = async () => {
       transactionOk.value = false
       return
     }
-    if (transactionForm.value.toAddress === '') {
-      transactionMsg.value = 'Destination wallet address is required.'
+    if (!transactionForm.value.toWalletId) {
+      transactionMsg.value = 'Please select a company wallet.'
+      transactionOk.value = false
+      return
+    }
+
+    // 根据选择的公司钱包ID获取地址
+    const selectedCompanyWallet = companyWallets.value.find(cw => cw.id === transactionForm.value.toWalletId)
+    if (!selectedCompanyWallet) {
+      transactionMsg.value = 'Selected company wallet not found.'
       transactionOk.value = false
       return
     }
@@ -1519,7 +1550,8 @@ const submitWithdraw = async () => {
     const payload = {
       amount: parseFloat(transactionForm.value.amount),
       description: transactionForm.value.description || 'Withdrawal',
-      toAddress: transactionForm.value.toAddress
+      fromWalletAddress: selectedWallet.value.walletAddress,
+      toAddress: selectedCompanyWallet.walletAddress
     }
 
     const response = await withdrawFromWallet(selectedWallet.value.id, payload)

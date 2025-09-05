@@ -94,13 +94,27 @@ export function logout() {
 
 // Check if user is admin
 export function isAdmin() {
-  const role = currentUser.value && currentUser.value.role ? String(currentUser.value.role).toUpperCase() : null
-  return role === 'ADMIN' || role === 'SUPER_ADMIN'
+  if (!currentUser.value) {
+    return false
+  }
+  
+  const role = currentUser.value.role ? String(currentUser.value.role).toUpperCase().trim() : null
+  
+  // Force SUPER_ADMIN to be admin
+  if (role === 'SUPER_ADMIN') {
+    return true
+  }
+  
+  // Check for regular ADMIN
+  return role === 'ADMIN'
 }
 
 // Check if user is super admin
 export function isSuperAdmin() {
-  const role = currentUser.value && currentUser.value.role ? String(currentUser.value.role).toUpperCase() : null
+  if (!currentUser.value) {
+    return false
+  }
+  const role = currentUser.value.role ? String(currentUser.value.role).toUpperCase().trim() : null
   return role === 'SUPER_ADMIN'
 }
 
@@ -118,6 +132,7 @@ export function getUserId() {
 export function getUserEmail() {
   return currentUser.value ? currentUser.value.email : null
 }
+
 
 // Get user full name
 export function getUserFullName() {

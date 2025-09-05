@@ -37,7 +37,7 @@
           <div class="text-xs uppercase tracking-wider text-white/60 mb-3">
             {{ isAdmin.value ? 'Management' : 'Dashboard' }}
           </div>
-          <!-- Flat items -->
+          <!-- Flat items -->SWEEPSTAKES
           <router-link
             v-for="item in flatMenuItems"
             :key="item.path"
@@ -61,7 +61,7 @@
             >
               <div class="flex items-center">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 1.657-1.343 3-3 3S6 12.657 6 11s1.343-3 3-3 3 1.343 3 3zm6 0a3 3 0 11-6 0 3 3 0 016 0zm-9 5a5 5 0 00-5 5h10a5 5 0 00-5-5zm9 0a5 5 0 00-5 5h10a5 5 0 00-5-5z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 1.657-1.343 3-3 3S6 12.657 6 11s1.343-3 3-3 3 3 1.343 3 3zm6 0a3 3 0 11-6 0 3 3 0 016 0zm-9 5a5 5 0 00-5 5h10a5 5 0 00-5-5zm9 0a5 5 0 00-5 5h10a5 5 0 00-5-5z"></path>
                 </svg>
                 <span class="text-sm font-medium">AI</span>
               </div>
@@ -71,7 +71,7 @@
             </button>
             <div v-show="aiOpen" class="ml-8 mt-1">
               <router-link
-                v-if="isAdmin.value"
+                v-if="isAdmin.value || (currentUser?.role && String(currentUser.role).toUpperCase().trim() === 'SUPER_ADMIN')"
                 to="/admin/ai/agents"
                 class="block px-3 lg:px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg mb-1"
                 :class="{ 'bg-white/10 text-white': isActiveRoute('/admin/ai/agents') }"
@@ -119,6 +119,7 @@
           </div>
           
           <div class="flex items-center space-x-2 lg:space-x-4">
+
             <!-- Language Selector (hidden on mobile) -->
             <select v-if="!isAdmin.value" class="hidden md:block border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="en">English</option>
@@ -181,7 +182,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { currentUser, isAuthenticated, logout as authLogout } from '../../utils/auth.js'
+import { currentUser, isAuthenticated, logout as authLogout, isAdmin as authIsAdmin } from '../../utils/auth.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -217,9 +218,15 @@ const userMenuItems = computed(() => [
 ])
 
 const isAdmin = computed(() => {
-  if (!currentUser.value || !currentUser.value.role) return false
-  const r = String(currentUser.value.role).toUpperCase()
-  return r === 'ADMIN' || r === 'SUPER_ADMIN'
+  // Force reactivity by accessing currentUser.value
+  const user = currentUser.value
+  const authResult = authIsAdmin()
+  
+  // Force SUPER_ADMIN to be admin
+  const role = user?.role ? String(user.role).toUpperCase().trim() : null
+  const forceResult = role === 'SUPER_ADMIN' || authResult
+  
+  return forceResult
 })
 
 // Fixed menu items that never change

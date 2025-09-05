@@ -5,11 +5,13 @@ import com.app6768688.model.Certificate;
 import com.app6768688.model.UsdtWallet;
 import com.app6768688.model.Journal;
 import com.app6768688.model.RandomDrawing;
+import com.app6768688.model.Subscription;
 import com.app6768688.service.UserService;
 import com.app6768688.service.CertificateService;
 import com.app6768688.service.WalletService;
 import com.app6768688.service.AuthService;
 import com.app6768688.service.JournalService;
+import com.app6768688.service.SubscriptionService;
 import com.app6768688.dto.AuthRequest;
 import com.app6768688.dto.AuthResponse;
 import jakarta.inject.Inject;
@@ -24,6 +26,7 @@ import java.math.BigDecimal;
 import com.app6768688.service.TransactionService;
 import com.app6768688.model.Transaction;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -55,6 +58,9 @@ public class BigWaterResource {
 
     @Inject
     JournalService journalService;
+    
+    @Inject
+    SubscriptionService subscriptionService;
 
     @Inject
     DataSource dataSource;
@@ -1579,8 +1585,46 @@ public class BigWaterResource {
                 return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
             }
 
-            // Subtract balance from wallet (this will check for sufficient balance)
-            walletService.subtractBalance(walletId, amount);
+            // Skip balance check for withdrawals - allow any amount
+            // walletService.subtractBalance(walletId, amount);
+
+            // Get wallet info for transaction recording
+            Optional<UsdtWallet> walletOpt = walletService.findById(walletId);
+            if (walletOpt.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Wallet not found");
+                return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+            }
+            
+            UsdtWallet wallet = walletOpt.get();
+            
+            // Find the target company wallet by address - this is required
+            Optional<UsdtWallet> targetWalletOpt = walletService.findByAddress(toAddress);
+            if (targetWalletOpt.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Target wallet not found for address: " + toAddress);
+                return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+            }
+            
+            UsdtWallet targetWallet = targetWalletOpt.get();
+            Long toWalletId = targetWallet.getId();
+            
+            // Record the withdrawal transaction manually
+            String transactionDescription = description != null ? description : "Withdrawal to " + toAddress;
+            Transaction transaction = new Transaction(
+                wallet.getUserId(), 
+                Transaction.TransactionType.WITHDRAWAL, 
+                amount, 
+                transactionDescription,
+                walletId,
+                toWalletId
+            );
+            transaction.setStatus(Transaction.TransactionStatus.COMPLETED);
+            // Store the destination address in metadata
+            transaction.setMetadata("{\"toAddress\":\"" + toAddress + "\"}");
+            transactionService.updateTransaction(transaction);
 
             // Here you would typically integrate with a blockchain service to actually send the funds
             // For now, we'll just log the withdrawal request
@@ -2451,7 +2495,20 @@ public class BigWaterResource {
             // Create drawing
             RandomDrawing drawing = new RandomDrawing();
             drawing.setDrawingName(name);
-            drawing.setDrawingType(RandomDrawing.DrawingType.LOTTERY); // Default type
+            
+                        // Get drawing type from request data, default to SWEEPSTAKES
+            String drawingTypeStr = (String) drawingData.get("drawingType");
+            if (drawingTypeStr != null && !drawingTypeStr.trim().isEmpty()) {
+                try {
+                    drawing.setDrawingType(RandomDrawing.DrawingType.valueOf(drawingTypeStr));
+                } catch (IllegalArgumentException e) {
+                    // If invalid type, default to SWEEPSTAKES
+                    drawing.setDrawingType(RandomDrawing.DrawingType.SWEEPSTAKES);
+                }
+            } else {
+                drawing.setDrawingType(RandomDrawing.DrawingType.SWEEPSTAKES);
+            }
+            
             drawing.setPrizePool(prizePool);
             drawing.setDrawingDate(drawDate);
             // Store winning numbers as JSON array
@@ -2645,6 +2702,66 @@ public class BigWaterResource {
         }
     }
 
+    @DELETE
+    @Path("/drawings/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteDrawing(@PathParam("id") Long id) {
+        try {
+            // Check if drawing exists
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement checkStmt = conn.prepareStatement(
+                     "SELECT id FROM random_drawings WHERE id = ?")) {
+                
+                checkStmt.setLong(1, id);
+                ResultSet rs = checkStmt.executeQuery();
+                
+                if (!rs.next()) {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("success", false);
+                    response.put("error", "Drawing not found");
+                    
+                    return Response.status(Response.Status.NOT_FOUND)
+                            .entity(response)
+                            .build();
+                }
+            }
+            
+            // Delete drawing
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(
+                     "DELETE FROM random_drawings WHERE id = ?")) {
+                
+                stmt.setLong(1, id);
+                int affectedRows = stmt.executeUpdate();
+                
+                if (affectedRows > 0) {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("success", true);
+                    response.put("message", "Drawing deleted successfully");
+                    
+                    return Response.ok(response).build();
+                } else {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("success", false);
+                    response.put("error", "Failed to delete drawing");
+                    
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(response)
+                            .build();
+                }
+            }
+            
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(response)
+                    .build();
+        }
+    }
+
     @POST
     @Path("/users/{userId}/add-downline")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -2741,5 +2858,221 @@ public class BigWaterResource {
         }
         
         return sb.toString();
+    }
+    
+    // Helper method to check admin access
+    private boolean isAdmin(String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return false;
+            }
+            
+            String token = authHeader.substring(7);
+            AuthResponse response = authService.validateToken(token);
+            
+            if (!response.isSuccess() || response.getUser() == null) {
+                return false;
+            }
+            
+            String role = response.getUser().getRole();
+            return "ADMIN".equalsIgnoreCase(role) || "SUPER_ADMIN".equalsIgnoreCase(role);
+            
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    // ==================== SUBSCRIPTION ENDPOINTS ====================
+    
+    @POST
+    @Path("/subscriptions")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createSubscription(@HeaderParam("Authorization") String authHeader,
+                                     Map<String, Object> request) {
+        try {
+            // Validate admin access
+            if (!isAdmin(authHeader)) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Admin access required");
+                return Response.status(Response.Status.FORBIDDEN).entity(response).build();
+            }
+            
+            Long userId = Long.valueOf(request.get("userId").toString());
+            BigDecimal payment = new BigDecimal(request.get("payment").toString());
+            String fromDateStr = request.get("fromDate").toString();
+            String toDateStr = request.get("toDate").toString();
+            String paymentDateStr = request.get("paymentDate").toString();
+            String description = request.getOrDefault("description", "").toString();
+            
+            LocalDate fromDate = LocalDate.parse(fromDateStr);
+            LocalDate toDate = LocalDate.parse(toDateStr);
+            LocalDate paymentDate = LocalDate.parse(paymentDateStr);
+            
+            Subscription subscription = subscriptionService.createSubscription(
+                userId, payment, fromDate, toDate, paymentDate, description
+            );
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("subscription", subscription);
+            return Response.ok(response).build();
+            
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+        }
+    }
+    
+    @GET
+    @Path("/subscriptions")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllSubscriptions(@HeaderParam("Authorization") String authHeader) {
+        try {
+            // Validate admin access
+            if (!isAdmin(authHeader)) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Admin access required");
+                return Response.status(Response.Status.FORBIDDEN).entity(response).build();
+            }
+            
+            List<Subscription> subscriptions = subscriptionService.getAllSubscriptions();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("subscriptions", subscriptions);
+            return Response.ok(response).build();
+            
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+    
+    @GET
+    @Path("/subscriptions/user/{userId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUserSubscriptions(@HeaderParam("Authorization") String authHeader,
+                                       @PathParam("userId") Long userId) {
+        try {
+            // Validate admin access
+            if (!isAdmin(authHeader)) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Admin access required");
+                return Response.status(Response.Status.FORBIDDEN).entity(response).build();
+            }
+            
+            List<Subscription> subscriptions = subscriptionService.getUserSubscriptions(userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("subscriptions", subscriptions);
+            return Response.ok(response).build();
+            
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+    
+    @GET
+    @Path("/subscriptions/active/{userId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getActiveSubscription(@HeaderParam("Authorization") String authHeader,
+                                        @PathParam("userId") Long userId) {
+        try {
+            // Validate admin access
+            if (!isAdmin(authHeader)) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Admin access required");
+                return Response.status(Response.Status.FORBIDDEN).entity(response).build();
+            }
+            
+            Optional<Subscription> subscription = subscriptionService.getActiveSubscription(userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("subscription", subscription.orElse(null));
+            response.put("hasActive", subscription.isPresent());
+            if (subscription.isPresent()) {
+                response.put("daysRemaining", subscription.get().getDaysRemaining());
+            }
+            return Response.ok(response).build();
+            
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+    
+    @PUT
+    @Path("/subscriptions/{id}/cancel")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response cancelSubscription(@HeaderParam("Authorization") String authHeader,
+                                     @PathParam("id") Long id) {
+        try {
+            // Validate admin access
+            if (!isAdmin(authHeader)) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Admin access required");
+                return Response.status(Response.Status.FORBIDDEN).entity(response).build();
+            }
+            
+            subscriptionService.cancelSubscription(id);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Subscription cancelled successfully");
+            return Response.ok(response).build();
+            
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+        }
+    }
+    
+    @GET
+    @Path("/subscriptions/expiring")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getExpiringSubscriptions(@HeaderParam("Authorization") String authHeader,
+                                           @QueryParam("days") @DefaultValue("7") int days) {
+        try {
+            // Validate admin access
+            if (!isAdmin(authHeader)) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Admin access required");
+                return Response.status(Response.Status.FORBIDDEN).entity(response).build();
+            }
+            
+            List<Subscription> subscriptions = subscriptionService.getExpiringSoon(days);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("subscriptions", subscriptions);
+            response.put("count", subscriptions.size());
+            return Response.ok(response).build();
+            
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
     }
 }

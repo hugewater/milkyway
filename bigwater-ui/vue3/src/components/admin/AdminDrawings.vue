@@ -19,28 +19,28 @@
         
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div class="flex items-center">
-            <div class="p-2 bg-green-100 rounded-lg">
-              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-            </div>
-            <div class="ml-4">
-              <p class="text-sm font-medium text-gray-600">Active</p>
-              <p class="text-2xl font-semibold text-gray-900">{{ stats.activeDrawings }}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center">
             <div class="p-2 bg-yellow-100 rounded-lg">
               <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
             </div>
             <div class="ml-4">
-              <p class="text-sm font-medium text-gray-600">Scheduled</p>
-              <p class="text-2xl font-semibold text-gray-900">{{ stats.scheduledDrawings }}</p>
+              <p class="text-sm font-medium text-gray-600">Pending</p>
+              <p class="text-2xl font-semibold text-gray-900">{{ stats.pendingDrawings }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center">
+            <div class="p-2 bg-red-100 rounded-lg">
+              <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">Cancelled</p>
+              <p class="text-2xl font-semibold text-gray-900">{{ stats.cancelledDrawings }}</p>
             </div>
           </div>
         </div>
@@ -78,9 +78,9 @@
               class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="completed">Completed</option>
+              <option value="PENDING">Pending</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
             <button 
               @click="createDrawing"
@@ -160,6 +160,19 @@
                 placeholder="Enter drawing name"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Drawing Type</label>
+              <select
+                v-model="newDrawing.drawingType"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="SWEEPSTAKES">Sweepstakes</option>
+                <option value="RAFFLE">Raffle</option>
+                <option value="CONTEST">Contest</option>
+              </select>
             </div>
             
 
@@ -363,6 +376,19 @@
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Drawing Type</label>
+              <select
+                v-model="editingDrawing.drawingType"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="SWEEPSTAKES">Sweepstakes</option>
+                <option value="RAFFLE">Raffle</option>
+                <option value="CONTEST">Contest</option>
+              </select>
+            </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Prize Pool</label>
@@ -394,9 +420,9 @@
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="pending">Pending</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="PENDING">Pending</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
             </div>
 
@@ -496,7 +522,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AppLayout from '../layouts/AppLayout.vue'
 
 const searchQuery = ref('')
@@ -510,6 +536,7 @@ const editingDrawing = ref({})
 
 const newDrawing = ref({
   name: '',
+  drawingType: 'SWEEPSTAKES',
   prizePool: '',
   drawDate: '',
   number1: '',
@@ -531,7 +558,6 @@ const drawings = ref([])
 
 onMounted(() => {
   loadDrawings()
-  loadStats()
 })
 
 const loadDrawings = async () => {
@@ -544,14 +570,14 @@ const loadDrawings = async () => {
           id: 'DRAW001',
           name: 'Weekly Lottery',
           prizePool: '$10,000',
-          status: 'active',
+          status: 'PENDING',
           drawDate: '2024-01-15'
         },
         {
           id: 'DRAW002',
           name: 'Monthly Jackpot',
           prizePool: '$50,000',
-          status: 'scheduled',
+          status: 'COMPLETED',
           drawDate: '2024-02-01'
         }
       ]
@@ -578,12 +604,12 @@ const loadDrawings = async () => {
         id: drawing.id,
         name: drawing.drawingName,
         prizePool: `$${parseFloat(drawing.prizePool).toLocaleString()}`,
-        status: drawing.status.toLowerCase(),
+        status: drawing.status,
         drawDate: drawing.drawingDate,
         winningNumbers: drawing.winningNumbers,
         powerBall: drawing.powerBall
       }))
-      console.log('Drawings loaded successfully:', drawings.value.length)
+            console.log('Drawings loaded successfully:', drawings.value.length)
     } else {
       console.error('Failed to load drawings:', result.error)
       throw new Error(result.error)
@@ -592,33 +618,64 @@ const loadDrawings = async () => {
     console.error('Error loading drawings:', error)
     // Fallback to mock data
     drawings.value = [
-      {
-        id: 'DRAW001',
-        name: 'Weekly Lottery',
-        type: 'LOTTERY',
-        prizePool: '$10,000',
-        status: 'active',
-        drawDate: '2024-01-15'
-      },
-      {
-        id: 'DRAW002',
-        name: 'Monthly Jackpot',
-        type: 'JACKPOT',
-        prizePool: '$50,000',
-        status: 'scheduled',
-        drawDate: '2024-02-01'
-      }
+              {
+          id: 'DRAW001',
+          name: 'Weekly Sweepstakes',
+          type: 'SWEEPSTAKES',
+          prizePool: '$10,000',
+          status: 'PENDING',
+          drawDate: '2024-01-15'
+        },
+        {
+          id: 'DRAW002',
+          name: 'Monthly Contest',
+          type: 'CONTEST',
+          prizePool: '$50,000',
+          status: 'COMPLETED',
+          drawDate: '2024-02-01'
+        }
     ]
   }
+  
+  // Load stats after drawings are loaded
+  loadStats()
 }
 
 const loadStats = async () => {
-  // TODO: Load from API
-  stats.value = {
-    totalDrawings: 2,
-    activeDrawings: 1,
-    scheduledDrawings: 1,
-    completedDrawings: 0
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      // Fallback to mock data
+      stats.value = {
+        totalDrawings: 2,
+        pendingDrawings: 1,
+        completedDrawings: 1,
+        cancelledDrawings: 0
+      }
+      return
+    }
+    
+    // Calculate stats from drawings data
+    const total = drawings.value.length
+    const pending = drawings.value.filter(d => d.status === 'PENDING').length
+    const completed = drawings.value.filter(d => d.status === 'COMPLETED').length
+    const cancelled = drawings.value.filter(d => d.status === 'CANCELLED').length
+    
+    stats.value = {
+      totalDrawings: total,
+      pendingDrawings: pending,
+      completedDrawings: completed,
+      cancelledDrawings: cancelled
+    }
+  } catch (error) {
+    console.error('Error loading stats:', error)
+    // Fallback to mock data
+    stats.value = {
+      totalDrawings: 2,
+      pendingDrawings: 1,
+      completedDrawings: 1,
+      cancelledDrawings: 0
+    }
   }
 }
 
@@ -641,12 +698,12 @@ const filteredDrawings = computed(() => {
 
 const getStatusClass = (status) => {
   switch (status) {
-    case 'active':
-      return 'bg-green-100 text-green-800'
-    case 'scheduled':
+    case 'PENDING':
       return 'bg-yellow-100 text-yellow-800'
-    case 'completed':
-      return 'bg-purple-100 text-purple-800'
+    case 'COMPLETED':
+      return 'bg-green-100 text-green-800'
+    case 'CANCELLED':
+      return 'bg-red-100 text-red-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }
@@ -742,6 +799,7 @@ const submitCreateDrawing = async () => {
     // Create drawing data
     const drawingData = {
       name: newDrawing.value.name,
+      drawingType: newDrawing.value.drawingType,
       prizePool: parseFloat(newDrawing.value.prizePool),
       drawDate: newDrawing.value.drawDate,
       winningNumbers: numbers.join(','),
@@ -768,7 +826,7 @@ const submitCreateDrawing = async () => {
         id: result.data.id,
         name: result.data.drawingName,
         prizePool: `$${parseFloat(result.data.prizePool).toLocaleString()}`,
-        status: result.data.status.toLowerCase(),
+        status: result.data.status,
         drawDate: result.data.drawingDate,
         winningNumbers: result.data.winningNumbers,
         powerBall: result.data.powerBall
@@ -782,6 +840,7 @@ const submitCreateDrawing = async () => {
     // Reset form and close modal
     newDrawing.value = {
       name: '',
+      drawingType: 'SWEEPSTAKES',
       prizePool: '',
       drawDate: '',
       number1: '',
@@ -792,6 +851,9 @@ const submitCreateDrawing = async () => {
       powerBall: ''
     }
     showCreateModal.value = false
+    
+    // Update stats after creating drawing
+    loadStats()
     
     // Show success message
     alert('Drawing created successfully!')
@@ -867,7 +929,7 @@ const submitEditDrawing = async () => {
           id: editingDrawing.value.id,
           name: drawingData.name,
           prizePool: `$${drawingData.prizePool.toLocaleString()}`,
-          status: drawingData.status.toLowerCase(),
+          status: drawingData.status,
           drawDate: drawingData.drawDate,
           winningNumbers: `[${drawingData.winningNumbers},${drawingData.powerBall}]`,
           powerBall: drawingData.powerBall
@@ -875,6 +937,10 @@ const submitEditDrawing = async () => {
       }
       
       showEditModal.value = false
+      
+      // Update stats after editing drawing
+      loadStats()
+      
       alert('Drawing updated successfully!')
     } else {
       throw new Error(result.error || 'Failed to update drawing')
@@ -911,10 +977,37 @@ const editDrawing = (drawing) => {
   showEditModal.value = true
 }
 
-const deleteDrawing = (drawing) => {
+const deleteDrawing = async (drawing) => {
   if (confirm(`Are you sure you want to delete drawing: ${drawing.name}?`)) {
-    // TODO: Implement delete drawing
-    alert(`Drawing ${drawing.name} deleted successfully.`)
+    try {
+      const response = await fetch(`/bw-api/drawings/${drawing.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        // Remove from local array
+        const index = drawings.value.findIndex(d => d.id === drawing.id)
+        if (index !== -1) {
+          drawings.value.splice(index, 1)
+        }
+        
+        // Update stats after deleting drawing
+        loadStats()
+        
+        alert(`Drawing ${drawing.name} deleted successfully.`)
+      } else {
+        throw new Error(result.error || 'Failed to delete drawing')
+      }
+    } catch (error) {
+      console.error('Failed to delete drawing:', error)
+      alert('Failed to delete drawing. Please try again.')
+    }
   }
 }
 </script>

@@ -114,7 +114,7 @@ public class RandomDrawing {
 
     // Enums
     public enum DrawingType {
-        POWERBALL, LOTTERY, RAFFLE
+        SWEEPSTAKES, RAFFLE, CONTEST
     }
 
     public enum DrawingStatus {

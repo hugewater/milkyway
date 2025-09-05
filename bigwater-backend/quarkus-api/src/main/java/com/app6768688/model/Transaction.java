@@ -17,6 +17,9 @@ public class Transaction {
     @Column(name = "wallet_id", nullable = false)
     private Long walletId;
     
+    @Column(name = "to_wallet_id", nullable = false)
+    private Long toWalletId;
+    
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false)
     private TransactionType transactionType;
@@ -64,6 +67,19 @@ public class Transaction {
         this.updatedAt = LocalDateTime.now();
     }
 
+    public Transaction(Long userId, TransactionType transactionType, BigDecimal amountUsdt, 
+                      String description, Long walletId, Long toWalletId) {
+        this.userId = userId;
+        this.transactionType = transactionType;
+        this.amountUsdt = amountUsdt;
+        this.description = description;
+        this.walletId = walletId;
+        this.toWalletId = toWalletId;
+        this.status = TransactionStatus.PENDING;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -73,6 +89,9 @@ public class Transaction {
 
     public Long getWalletId() { return walletId; }
     public void setWalletId(Long walletId) { this.walletId = walletId; }
+
+    public Long getToWalletId() { return toWalletId; }
+    public void setToWalletId(Long toWalletId) { this.toWalletId = toWalletId; }
 
     public TransactionType getTransactionType() { return transactionType; }
     public void setTransactionType(TransactionType transactionType) { this.transactionType = transactionType; }

@@ -219,6 +219,7 @@
                          :style="{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }">
                       <div class="py-1">
                         <button @click="openViewWallet(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View</button>
+                        <button @click="openPay(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Pay</button>
                         <button @click="openEditWallet(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit</button>
                         <button @click="toggleStatus(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ w.isActive ? 'Deactivate' : 'Activate' }}</button>
                         <button @click="deleteWalletRow(w); closeActions()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Delete</button>
@@ -279,6 +280,101 @@
         </form>
       </div>
     </div>
+
+    <!-- Pay Modal -->
+    <div v-if="showPayModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-lg">
+        <h3 class="text-lg font-bold text-deep-ocean mb-4">
+          {{ selectedWallet?.walletType === 'MEMBER' ? 'Record Payment to Company' : 'Record Payment from Company' }}
+        </h3>
+        <form @submit.prevent="submitPay" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">From Wallet</label>
+            <div class="flex items-center space-x-2">
+              <input 
+                v-model="selectedWallet.walletAddress" 
+                type="text" 
+                disabled 
+                class="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700" 
+              />
+              <span class="px-2 py-1 text-xs rounded bg-gray-100 text-gray-600">
+                {{ selectedWallet?.walletType }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="selectedWallet?.walletType === 'MEMBER'">
+            <label class="block text-sm font-medium text-gray-700 mb-1">To Company Wallet</label>
+            <select 
+              v-model="payForm.toWalletId"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            >
+              <option v-for="cw in companyWallets" :key="cw.id" :value="cw.id">
+                {{ cw.walletName || 'Company Wallet' }} ({{ cw.walletAddress?.slice(0, 8) }}...)
+              </option>
+            </select>
+          </div>
+
+          <div v-else>
+            <label class="block text-sm font-medium text-gray-700 mb-1">To Wallet Address</label>
+            <input 
+              v-model="payForm.toWalletAddress" 
+              type="text" 
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter recipient wallet address"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Amount (USDT)</label>
+            <div class="relative">
+              <span class="absolute left-3 top-2 text-gray-500">$</span>
+              <input 
+                v-model="payForm.amount" 
+                type="number" 
+                step="0.000001" 
+                min="0" 
+                required
+                class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea 
+              v-model="payForm.description" 
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Payment purpose or reference"
+            ></textarea>
+          </div>
+
+          <div class="flex justify-end space-x-3 pt-2">
+            <button 
+              type="button" 
+              @click="showPayModal = false" 
+              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Record Payment
+            </button>
+          </div>
+          
+          <p v-if="payMsg" class="text-sm" :class="payOk ? 'text-green-600' : 'text-red-600'">
+            {{ payMsg }}
+          </p>
+        </form>
+      </div>
+    </div>
     </div>
   </AppLayout>
 </template>
@@ -287,6 +383,7 @@
 import AppLayout from '../layouts/AppLayout.vue'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { transferBetweenWallets, createWallet, addBalanceToWallet, getWalletsPaged, toggleWalletStatus, deleteWallet, updateWallet } from '../../utils/api.js'
+import apiService from '../../utils/api.js'
 
 const form = ref({ fromWalletId: null, toWalletId: null, amount: '' })
 const transferMsg = ref('')
@@ -310,6 +407,19 @@ const selectedWallet = ref(null)
 const editWalletForm = ref({ id: null, walletName: '', walletAddress: '', walletType: 'COMPANY' })
 const openActionId = ref(null)
 const menuPos = ref({ top: 0, left: 0 })
+
+// Pay modal states
+const showPayModal = ref(false)
+const payForm = ref({
+  fromWalletId: null,
+  toWalletId: null,
+  toWalletAddress: '',
+  amount: '',
+  description: ''
+})
+const payMsg = ref('')
+const payOk = ref(false)
+const companyWallets = ref([])
 
 // pagination & filters
 const total = ref(0)
@@ -463,6 +573,7 @@ const deleteWalletRow = async (w) => {
 
 onMounted(() => {
   loadCompanyWallets()
+  loadCompanyWalletsForPay()
   document.addEventListener('click', onClickOutside)
 })
 
@@ -529,6 +640,92 @@ const submitTransfer = async () => {
   } catch (e) {
     transferOk.value = false
     transferMsg.value = e.message || 'Transfer failed'
+  }
+}
+
+const loadCompanyWalletsForPay = async () => {
+  try {
+    const resp = await apiService.getWalletsPaged({
+      type: 'COMPANY',
+      active: true,
+      limit: 10
+    })
+    companyWallets.value = resp.data || []
+  } catch (e) {
+    console.error('Failed to load company wallets:', e)
+    companyWallets.value = []
+  }
+}
+
+const openPay = async (w) => {
+  selectedWallet.value = w
+  payForm.value = {
+    fromWalletId: w.id,
+    toWalletId: null,
+    toWalletAddress: '',
+    amount: '',
+    description: ''
+  }
+  
+  // 如果是成员钱包，自动加载公司钱包
+  if (w.walletType === 'MEMBER') {
+    await loadCompanyWalletsForPay()
+    if (companyWallets.value.length > 0) {
+      payForm.value.toWalletId = companyWallets.value[0].id
+    }
+  }
+  
+  showPayModal.value = true
+  payMsg.value = ''
+}
+
+const submitPay = async () => {
+  payMsg.value = ''
+  payOk.value = false
+  try {
+    const payload = {
+      fromAddress: selectedWallet.value?.walletAddress, // 添加必需的fromAddress字段
+      amount: String(payForm.value.amount),
+      description: payForm.value.description || ''
+    }
+
+    // 根据钱包类型设置接收方
+    if (selectedWallet.value?.walletType === 'MEMBER') {
+      // 成员钱包支付到公司钱包
+      payload.toWalletId = payForm.value.toWalletId
+    } else {
+      // 公司钱包支付到成员钱包 - 需要根据地址找到钱包ID
+      if (payForm.value.toWalletAddress) {
+        // 尝试从现有钱包列表中找到匹配的钱包
+        const targetWallet = wallets.value.find(w => 
+          w.walletAddress && w.walletAddress.toLowerCase() === payForm.value.toWalletAddress.toLowerCase()
+        )
+        if (targetWallet) {
+          payload.toWalletId = targetWallet.id
+        } else {
+          payMsg.value = 'Target wallet not found in system. Please use a registered wallet address.'
+          return
+        }
+      } else {
+        payMsg.value = 'Please enter a valid wallet address'
+        return
+      }
+    }
+
+    console.log('Submitting payment payload:', payload) // 调试日志
+
+    const resp = await apiService.recordWalletPayment(payload)
+    payOk.value = !!resp.success
+    payMsg.value = resp.message || (resp.success ? 'Payment recorded' : 'Payment failed')
+    
+    if (resp.success) {
+      showPayModal.value = false
+      loadCompanyWalletsForPay() // 刷新钱包列表
+    }
+  } catch (e) {
+    payOk.value = false
+    payMsg.value = e?.message || 'Payment failed'
+    console.error('Payment submission error:', e) // 调试日志
   }
 }
 </script>
