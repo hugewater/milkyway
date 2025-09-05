@@ -187,7 +187,7 @@
                   {{ formatDate(member.joinDate) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  ${{ member.balance.toLocaleString() }}
+                  ${{ Number(member.balance || 0).toLocaleString() }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium relative">
                   <div class="inline-flex items-center">
@@ -210,6 +210,7 @@
                       <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionEdit()">Edit</button>
                       <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionView()">View</button>
                       <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionWallets()">Wallets</button>
+                      <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionUplines()">Uplines</button>
                       <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionGraph()">Graph</button>
                       <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="actionToggle()">{{ actions.member?.status === 'active' ? 'Suspend' : 'Activate' }}</button>
                     </div>
@@ -236,6 +237,7 @@
           <div class="flex justify-between"><span class="text-gray-500">Level</span><span><span :class="getLevelBadgeClass(viewingMember.level)" class="px-2 py-1 text-xs font-medium rounded-full">{{ viewingMember.level }}</span></span></div>
           <div class="flex justify-between"><span class="text-gray-500">Status</span><span><span :class="getStatusBadgeClass(viewingMember.status)" class="px-2 py-1 text-xs font-medium rounded-full">{{ viewingMember.status }}</span></span></div>
           <div class="flex justify-between"><span class="text-gray-500">Referral Code</span><span class="text-gray-900 font-mono">{{ viewingMember.referralCode || 'N/A' }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Referred By Code</span><span class="text-gray-900 font-mono">{{ viewingMember.referredByCode || 'N/A' }}</span></div>
           <div class="flex justify-between"><span class="text-gray-500">Join Date</span><span class="text-gray-900">{{ formatDate(viewingMember.joinDate) }}</span></div>
           <div class="flex justify-between"><span class="text-gray-500">Balance</span><span class="text-gray-900">${{ (viewingMember.balance || 0).toLocaleString() }}</span></div>
         </div>
@@ -336,7 +338,6 @@
                 <input
                   v-model="editingMember.firstName"
                   type="text"
-                  required
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
                 />
               </div>
@@ -345,7 +346,6 @@
                 <input
                   v-model="editingMember.lastName"
                   type="text"
-                  required
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
                 />
               </div>
@@ -454,7 +454,7 @@
               <thead class="bg-gray-50">
                 <tr>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Referral Code</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Address</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
@@ -721,7 +721,7 @@
                 <thead class="bg-gray-50">
                   <tr>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Referral Code</th>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -732,7 +732,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="u in uplines" :key="u.id">
                     <td class="px-4 py-2 text-sm text-gray-900">{{ u.id }}</td>
-                    <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ u.name }}</td>
+                    <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ u.referralCode || 'N/A' }}</td>
                     <td class="px-4 py-2 text-sm text-gray-900">{{ u.email }}</td>
                     <td class="px-4 py-2 text-sm text-gray-900">
                       <span :class="getLevelBadgeClass(u.level)" class="px-2 py-1 text-xs rounded-full">
@@ -744,7 +744,7 @@
                         {{ u.status }}
                       </span>
                     </td>
-                    <td class="px-4 py-2 text-sm text-gray-900">${{ u.balance.toLocaleString() }}</td>
+                    <td class="px-4 py-2 text-sm text-gray-900">${{ Number(u.balance || 0).toLocaleString() }}</td>
                     <td class="px-4 py-2 text-sm text-gray-900">{{ formatDate(u.joinDate) }}</td>
                   </tr>
                 </tbody>
@@ -781,12 +781,60 @@
                         {{ d.status }}
                       </span>
                     </td>
-                    <td class="px-4 py-2 text-sm text-gray-900">${{ d.balance.toLocaleString() }}</td>
+                    <td class="px-4 py-2 text-sm text-gray-900">${{ Number(d.balance || 0).toLocaleString() }}</td>
                     <td class="px-4 py-2 text-sm text-gray-900">{{ formatDate(d.joinDate) }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Uplines Modal -->
+    <div v-if="showUplinesModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold text-deep-ocean">Uplines - {{ selectedUser?.name }}</h3>
+          <button @click="showUplinesModal = false" class="text-gray-500 hover:text-gray-700">✕</button>
+        </div>
+        <div v-if="uplineDownlineLoading" class="text-sm text-gray-500">Loading...</div>
+        <div v-else>
+          <div v-if="uplines.length === 0" class="text-sm text-gray-500">No uplines found.</div>
+          <div v-else class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Join Date</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="u in uplines" :key="u.id">
+                  <td class="px-4 py-2 text-sm text-gray-900">{{ u.id }}</td>
+                  <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ u.referralCode || 'N/A' }}</td>
+                  <td class="px-4 py-2 text-sm text-gray-900">{{ u.email }}</td>
+                  <td class="px-4 py-2 text-sm text-gray-900">
+                    <span :class="getLevelBadgeClass(u.level)" class="px-2 py-1 text-xs rounded-full">
+                      {{ u.level }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-2 text-sm text-gray-900">
+                    <span :class="getStatusBadgeClass(u.status)" class="px-2 py-1 text-xs rounded-full">
+                      {{ u.status }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-2 text-sm text-gray-900">${{ Number(u.balance || 0).toLocaleString() }}</td>
+                  <td class="px-4 py-2 text-sm text-gray-900">{{ formatDate(u.joinDate) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -878,6 +926,7 @@ const showAddWalletModal = ref(false)
 const showViewModal = ref(false)
 const viewingMember = ref(null)
 const showUplineDownlineModal = ref(false)
+const showUplinesModal = ref(false)
 const showNetworkGraphModal = ref(false)
 const selectedUser = ref(null)
 const selectedWallet = ref(null)
@@ -964,6 +1013,7 @@ const loadMembers = async () => {
       name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
       email: u.email,
       referralCode: u.referralCode || '',
+      referredByCode: u.referredByCode || '',
       level: u.level || 'CHIEF',
       status: (u.status || 'ACTIVE').toLowerCase(),
       joinDate: u.joinDate || u.createdAt || new Date().toISOString(),
@@ -1165,8 +1215,8 @@ const editMember = (member) => {
   console.log('Edit member:', member)
   editingMember.value = {
     id: member.id,
-    firstName: member.firstName || member.name?.split(' ')[0] || '',
-    lastName: member.lastName || member.name?.split(' ').slice(1).join(' ') || '',
+    firstName: member.firstName || '',
+    lastName: member.lastName || '',
     email: member.email,
     phone: member.phone || '',
     level: member.level || 'CHIEF',
@@ -1240,8 +1290,21 @@ const viewMember = (member) => {
   showViewModal.value = true
 }
 
-const toggleMemberStatus = (member) => {
-  member.status = member.status === 'active' ? 'suspended' : 'active'
+const toggleMemberStatus = async (member) => {
+  const current = (member.status || 'active').toLowerCase()
+  const newStatusUpper = current === 'active' ? 'INACTIVE' : 'ACTIVE'
+  try {
+    const resp = await updateUser(member.id, { status: newStatusUpper })
+    if (resp && resp.success) {
+      member.status = newStatusUpper.toLowerCase()
+    } else {
+      transactionMsg.value = resp?.error || 'Failed to update status'
+      transactionOk.value = false
+    }
+  } catch (e) {
+    transactionMsg.value = e?.message || 'Failed to update status'
+    transactionOk.value = false
+  }
 }
 
 // Actions dropdown state
@@ -1254,8 +1317,29 @@ const openActions = async (member, evt) => {
   await nextTick()
   actionsTriggerEl = evt.currentTarget
   const rect = actionsTriggerEl.getBoundingClientRect()
-  actions.value.pos = { top: rect.bottom + 4, left: Math.min(rect.left, window.innerWidth - 200) }
   actions.value.open = true
+  await nextTick()
+  const menuEl = actionsMenuEl
+  const menuWidth = menuEl && menuEl.offsetWidth ? menuEl.offsetWidth : 176 // w-44 ≈ 176px
+  const menuHeight = menuEl && menuEl.offsetHeight ? menuEl.offsetHeight : 200
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+
+  // Horizontal position: clamp within viewport with 8px margin
+  let left = rect.left
+  if (left + menuWidth + 8 > viewportWidth) {
+    left = Math.max(8, viewportWidth - menuWidth - 8)
+  } else {
+    left = Math.max(8, left)
+  }
+
+  // Vertical position: default below; if overflow, flip above; clamp with 8px margin
+  let top = rect.bottom + 4
+  if (top + menuHeight + 8 > viewportHeight) {
+    top = Math.max(8, rect.top - menuHeight - 4)
+  }
+
+  actions.value.pos = { top, left }
 }
 
 const closeActions = () => { actions.value.open = false; actions.value.member = null }
@@ -1286,6 +1370,7 @@ onBeforeUnmount(() => {
 const actionEdit = () => { if (actions.value.member) editMember(actions.value.member); closeActions() }
 const actionView = () => { if (actions.value.member) viewMember(actions.value.member); closeActions() }
 const actionWallets = () => { if (actions.value.member) openWallets(actions.value.member); closeActions() }
+const actionUplines = () => { if (actions.value.member) showUplines(actions.value.member); closeActions() }
 const actionGraph = () => { if (actions.value.member) showNetworkGraph(actions.value.member); closeActions() }
 const actionToggle = () => { if (actions.value.member) toggleMemberStatus(actions.value.member); closeActions() }
 
@@ -1612,6 +1697,25 @@ const showUplineDownline = async (member) => {
     // 如果API失败，使用模拟数据作为后备
     await simulateUplineDownlineData(member.id)
     // already opened
+  } finally {
+    uplineDownlineLoading.value = false
+  }
+}
+
+const showUplines = async (member) => {
+  selectedUser.value = member
+  uplineDownlineLoading.value = true
+  showUplinesModal.value = true
+  try {
+    const response = await getUserNetwork(member.id)
+    if (response && response.success) {
+      uplines.value = response.data.uplines || []
+    } else {
+      // fallback: simulate data
+      await simulateUplineDownlineData(member.id)
+    }
+  } catch (error) {
+    await simulateUplineDownlineData(member.id)
   } finally {
     uplineDownlineLoading.value = false
   }

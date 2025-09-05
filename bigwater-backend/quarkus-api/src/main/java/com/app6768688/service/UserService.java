@@ -280,8 +280,8 @@ public class UserService {
         User user = userOpt.get();
         Map<String, Object> networkData = new HashMap<>();
 
-        // Get uplines (referrers) - up to 2 levels up
-        List<User> uplines = getUplines(user, 2);
+        // Get uplines (referrers) - all the way to the top-most
+        List<User> uplines = getUplinesToTop(user);
         networkData.put("uplines", uplines);
 
         // Get downlines (referrals) - up to 3 levels down
@@ -310,6 +310,25 @@ public class UserService {
             }
         }
         
+        return uplines;
+    }
+
+    // Walk up the tree by referred_by_code until hitting COMPANY001 (top) or null
+    private List<User> getUplinesToTop(User user) {
+        List<User> uplines = new ArrayList<>();
+        String referrerCode = user.getReferredByCode();
+
+        while (referrerCode != null && !referrerCode.equals("COMPANY001")) {
+            Optional<User> referrerOpt = userRepository.findByReferralCode(referrerCode);
+            if (referrerOpt.isPresent()) {
+                User referrer = referrerOpt.get();
+                uplines.add(referrer);
+                referrerCode = referrer.getReferredByCode();
+            } else {
+                break;
+            }
+        }
+
         return uplines;
     }
 
