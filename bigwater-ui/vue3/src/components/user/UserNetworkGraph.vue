@@ -57,6 +57,7 @@
         ></div>
         <div ref="contextMenu" class="absolute bg-white border border-gray-200 rounded-md shadow-lg text-sm hidden z-50">
           <button @click="onContextAddDownline" class="block w-full text-left px-4 py-2 hover:bg-gray-50">Add Downline</button>
+          <button @click="onContextEditMember" class="block w-full text-left px-4 py-2 hover:bg-gray-50 border-t border-gray-100">Edit Member</button>
         </div>
       </div>
 
@@ -144,7 +145,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close','add-downline'])
+const emit = defineEmits(['close','add-downline','edit-member'])
 
 const viewMode = ref('graph')
 const chartContainer = ref(null)
@@ -265,16 +266,17 @@ const applyTreeOption = (treeData) => {
     getContent: (e) => {
       const model = e && e.item ? e.item.getModel() : null
       const email = (model && model.data && model.data.email) ? model.data.email : 'N/A'
-      const local = getEmailLocal(email)
-      const referral = (model && model.data && model.data.referralCode) ? model.data.referralCode : ''
+      const referral = (model && model.data && model.data.referralCode) ? model.data.referralCode : 'N/A'
       const div = document.createElement('div')
       div.style.padding = '6px 8px'
       div.style.background = '#ffffff'
       div.style.border = '1px solid #e5e7eb'
       div.style.borderRadius = '6px'
       div.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'
-      div.innerHTML = `<div style="font-size:12px;color:#111827;">${local} <span style='color:#6b7280'>@</span></div>` +
-                      (referral ? `<div style="font-size:11px;color:#6b7280;">Code: ${referral}</div>` : '')
+      div.innerHTML = `
+        <div style="font-size:12px;color:#111827;">Email: <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace">${email}</span></div>
+        <div style="font-size:11px;color:#6b7280;">Referral Code: ${referral}</div>
+      `
       return div
     }
   })
@@ -826,6 +828,18 @@ const onContextAddDownline = () => {
   })
 }
 
+const onContextEditMember = () => {
+  const menu = contextMenu.value
+  if (menu) menu.classList.add('hidden')
+  if (!lastContextNode || !lastContextNode.data) return
+  emit('edit-member', {
+    id: lastContextNode.data.userId,
+    email: lastContextNode.data.email,
+    referralCode: lastContextNode.data.referralCode,
+    name: lastContextNode.data.name || ''
+  })
+}
+
 // Expose method to append a newly created downline under a parent by referral code
 const appendDownline = ({ parentReferralCode, newDownline }) => {
   try {
@@ -883,7 +897,47 @@ const appendDownline = ({ parentReferralCode, newDownline }) => {
   }
 }
 
-defineExpose({ appendDownline })
+
+// Update member fields (email/name/referralCode) in tree and refresh graph
+const updateMember = ({ id, email, firstName, lastName, referralCode }) => {
+  try {
+    if (!currentTreeData.value || !id) return
+    const patch = {
+      email: email !== undefined ? email : undefined,
+      name: (firstName || lastName) ? `${firstName || ''} ${lastName || ''}`.trim() : undefined,
+      referralCode: referralCode !== undefined ? referralCode : undefined
+    }
+    const applyPatch = (node) => {
+      if (!node) return false
+      let hit = false
+      if (String(node.userId) === String(id)) {
+        if (patch.email !== undefined) node.email = patch.email
+        if (patch.name !== undefined && patch.name.length > 0) node.name = patch.name
+        if (patch.referralCode !== undefined) node.referralCode = patch.referralCode || node.referralCode
+        hit = true
+      }
+      if (node.children && node.children.length) {
+        for (let i = 0; i < node.children.length; i++) {
+          if (applyPatch(node.children[i])) hit = true
+        }
+      }
+      return hit
+    }
+    const changed = applyPatch(currentTreeData.value)
+    if (!changed) return
+    const newData = toG6Tree(currentTreeData.value)
+    const handler = () => {
+      translateRootToLeftMiddle()
+      graph.off('afterlayout', handler)
+    }
+    graph.on('afterlayout', handler)
+    graph.changeData(newData)
+  } catch (e) {
+    console.error('updateMember failed', e)
+  }
+}
+
+defineExpose({ appendDownline, updateMember })
 </script>
 
 <style scoped>

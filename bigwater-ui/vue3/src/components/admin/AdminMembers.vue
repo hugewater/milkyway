@@ -327,7 +327,7 @@
     </div>
 
     <!-- Edit Member Modal -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
       <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <h3 class="text-lg font-bold text-deep-ocean mb-4">Edit Member</h3>
         <form @submit.prevent="saveEditMember">
@@ -848,6 +848,7 @@
         :loading="uplineDownlineLoading"
         @close="showNetworkGraphModal = false"
         @add-downline="onGraphAddDownline"
+        @edit-member="onGraphEditMember"
         ref="userGraphRef"
       />
     </div>
@@ -907,7 +908,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getWalletsByUserId, transferBetweenWallets, withdrawFromWallet, getWallets, createWallet, getUserNetwork, updateUser, createUser, getUsersPaged, addDownline, getTransactionsByWalletId } from '../../utils/api.js'
+import { getWalletsByUserId, transferBetweenWallets, withdrawFromWallet, getWallets, createWallet, getUserNetwork, updateUser, createUser, getUsersPaged, addDownline, getTransactionsByWalletId, getUserById } from '../../utils/api.js'
 import AppLayout from '../layouts/AppLayout.vue'
 import NetworkGraph from './NetworkGraph.vue'
 import UserNetworkGraph from '../user/UserNetworkGraph.vue'
@@ -1279,6 +1280,19 @@ const saveEditMember = async () => {
       editingMember.value = null
       transactionMsg.value = 'Member updated successfully!'
       transactionOk.value = true
+      
+      // 同步刷新图节点（若图打开）
+      try {
+        if (userGraphRef.value && typeof userGraphRef.value.updateMember === 'function') {
+          userGraphRef.value.updateMember({
+            id: response.data?.id || members.value[memberIndex]?.id,
+            email: userData.email,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            referralCode: members.value[memberIndex]?.referralCode || undefined
+          })
+        }
+      } catch (e) { console.warn('updateMember on graph failed', e) }
       
       // Clear message after 3 seconds
       setTimeout(() => {
@@ -1841,4 +1855,36 @@ const onGraphAddDownline = (payload) => {
 }
 
 const userGraphRef = ref(null)
+
+const onGraphEditMember = (payload) => {
+  try {
+    if (!payload) return
+    // 保持图弹窗打开，叠在下层
+    // 先尝试从本地 members 中取详情
+    const local = members.value.find(m => String(m.id) === String(payload.id))
+    const openEdit = (u) => {
+      editingMember.value = {
+        id: u?.id || payload.id,
+        firstName: u?.firstName || '',
+        lastName: u?.lastName || '',
+        email: u?.email || payload.email || '',
+        phone: u?.phone || '',
+        level: u?.level || 'CHIEF',
+        status: (u?.status || 'active'),
+        referredByCode: u?.referredByCode || '',
+        password: ''
+      }
+      showEditModal.value = true
+    }
+    if (local) {
+      openEdit(local)
+    } else {
+      // 补充请求后端获取完整信息
+      getUserById(payload.id).then(resp => {
+        const u = resp && resp.success ? resp.data : null
+        openEdit(u)
+      }).catch(() => openEdit(null))
+    }
+  } catch (e) {}
+}
 </script>
