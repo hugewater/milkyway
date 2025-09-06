@@ -1234,7 +1234,7 @@ const editMember = (member) => {
     email: member.email,
     phone: member.phone || '',
     level: member.level || 'CHIEF',
-    status: member.status || 'active',
+    status: (member.status || 'active').toLowerCase(),
     referredByCode: member.referredByCode || '',
     password: ''
   }
@@ -1886,7 +1886,7 @@ const onGraphEditMember = (payload) => {
         email: u?.email || payload.email || '',
         phone: u?.phone || '',
         level: u?.level || 'CHIEF',
-        status: (u?.status || 'active'),
+        status: ((u?.status || 'active') + '').toLowerCase(),
         referredByCode: u?.referredByCode || '',
         password: ''
       }

@@ -2031,6 +2031,62 @@ public class BigWaterResource {
     }
 
     @GET
+    @Path("/users/{userId}/downlines/count")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUserDownlineCount(@PathParam("userId") Long userId) {
+        try {
+            Optional<User> userOpt = userService.findById(userId);
+            if (userOpt.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "User not found with ID: " + userId);
+                return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+            }
+            int count = userService.countAllDownlinesByUser(userOpt.get());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("userId", userId);
+            response.put("count", count);
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+        }
+    }
+
+    @POST
+    @Path("/users/downlines/count")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUserDownlineCountBatch(Map<String, Object> payload) {
+        try {
+            Object idsObj = payload.get("userIds");
+            if (!(idsObj instanceof List<?> list)) {
+                Map<String, Object> bad = new HashMap<>();
+                bad.put("success", false);
+                bad.put("error", "userIds must be an array");
+                return Response.status(Response.Status.BAD_REQUEST).entity(bad).build();
+            }
+            List<Long> ids = new java.util.ArrayList<>();
+            for (Object o : list) {
+                if (o instanceof Number n) ids.add(n.longValue());
+            }
+            Map<Long, Integer> counts = userService.countAllDownlinesByUserIds(ids);
+            Map<String, Object> ok = new HashMap<>();
+            ok.put("success", true);
+            ok.put("data", counts);
+            return Response.ok(ok).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+        }
+    }
+
+    @GET
     @Path("/test-db")
     @Produces(MediaType.APPLICATION_JSON)
     public Response testDatabase() {

@@ -375,4 +375,61 @@ public class UserService {
         int depth = Math.max(1, Math.min(levels, 5)); // sanity limit
         return getDownlines(userOpt.get(), depth);
     }
+
+    /**
+     * Count ALL descendants (downlines) under a user, unlimited depth.
+     */
+    public int countAllDownlinesByUser(User user) {
+        List<User> allUsers = userRepository.findAll();
+        // Build adjacency by referredByCode -> children users
+        Map<String, List<User>> byRef = new HashMap<>();
+        for (User u : allUsers) {
+            String parentCode = u.getReferredByCode();
+            if (parentCode == null) parentCode = "";
+            byRef.computeIfAbsent(parentCode, k -> new ArrayList<>()).add(u);
+        }
+        // Memoized DFS by referralCode
+        Map<String, Integer> memo = new HashMap<>();
+        return countDescendantsByReferralCode(user.getReferralCode(), byRef, memo);
+    }
+
+    private int countDescendantsByReferralCode(String referralCode, Map<String, List<User>> byRef, Map<String, Integer> memo) {
+        if (referralCode == null) return 0;
+        if (memo.containsKey(referralCode)) return memo.get(referralCode);
+        List<User> children = byRef.getOrDefault(referralCode, List.of());
+        int total = 0;
+        for (User child : children) {
+            total += 1 + countDescendantsByReferralCode(child.getReferralCode(), byRef, memo);
+        }
+        memo.put(referralCode, total);
+        return total;
+    }
+
+    /**
+     * Batch count ALL descendants for a list of user IDs.
+     */
+    public Map<Long, Integer> countAllDownlinesByUserIds(List<Long> userIds) {
+        Map<Long, Integer> result = new HashMap<>();
+        if (userIds == null || userIds.isEmpty()) return result;
+
+        List<User> allUsers = userRepository.findAll();
+        Map<Long, User> idToUser = new HashMap<>();
+        for (User u : allUsers) idToUser.put(u.getId(), u);
+
+        Map<String, List<User>> byRef = new HashMap<>();
+        for (User u : allUsers) {
+            String parentCode = u.getReferredByCode();
+            if (parentCode == null) parentCode = "";
+            byRef.computeIfAbsent(parentCode, k -> new ArrayList<>()).add(u);
+        }
+        Map<String, Integer> memo = new HashMap<>();
+
+        for (Long id : userIds) {
+            User user = idToUser.get(id);
+            if (user == null) continue;
+            int cnt = countDescendantsByReferralCode(user.getReferralCode(), byRef, memo);
+            result.put(id, cnt);
+        }
+        return result;
+    }
 }

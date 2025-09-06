@@ -321,6 +321,17 @@ class ApiService {
     })
   }
 
+  async getDownlineCount(userId) {
+    return this.request(`/users/${userId}/downlines/count`)
+  }
+
+  async getDownlineCountBatch(userIds = []) {
+    return this.request(`/users/downlines/count`, {
+      method: 'POST',
+      body: JSON.stringify({ userIds })
+    })
+  }
+
   // AI Chats
   async listChats(params = {}) {
     const q = new URLSearchParams(params).toString()
@@ -393,6 +404,8 @@ export const getTransactionsByUserId = apiService.getTransactionsByUserId.bind(a
 export const getTransactionsByWalletId = apiService.getTransactionsByWalletId.bind(apiService)
 export const getUserNetwork = apiService.getUserNetwork.bind(apiService)
 export const addDownline = apiService.addDownline.bind(apiService)
+export const getDownlineCount = apiService.getDownlineCount.bind(apiService)
+export const getDownlineCountBatch = apiService.getDownlineCountBatch.bind(apiService)
 export const healthCheck = apiService.healthCheck.bind(apiService)
 export const getVersion = apiService.getVersion.bind(apiService)
 

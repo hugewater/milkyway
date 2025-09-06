@@ -126,7 +126,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { getUserNetwork } from '../../utils/api.js'
+import { getUserNetwork, getDownlineCountBatch } from '../../utils/api.js'
 import * as G6Mod from '@antv/g6'
 const G6Lib = (G6Mod && (G6Mod.default && G6Mod.default.TreeGraph ? G6Mod.default : G6Mod))
 
@@ -154,6 +154,7 @@ let chart = null
 let resizeObserver = null
 let keepAliveTimer = null
 const currentTreeData = ref(null)
+const downlineCounts = ref({})
 const chartHeight = ref(280) // initial; will auto-fit to remaining space
 const headerActions = ref(null)
 const toggleBar = ref(null)
@@ -249,6 +250,59 @@ const toG6Tree = (root) => {
   return mapNode(root)
 }
 
+// 收集当前树中所有 userId
+const collectUserIds = (node, outSet) => {
+  if (!node) return
+  if (node.userId !== undefined && node.userId !== null) {
+    outSet.add(Number(node.userId))
+  }
+  if (Array.isArray(node.children)) {
+    for (let i = 0; i < node.children.length; i++) {
+      collectUserIds(node.children[i], outSet)
+    }
+  }
+}
+
+// 将 downlineCounts 应用到图节点标签
+const applyCountsToGraph = () => {
+  if (!graph) return
+  try {
+    const nodes = graph.getNodes()
+    for (let i = 0; i < nodes.length; i++) {
+      const item = nodes[i]
+      const model = item.getModel()
+      const data = model && model.data ? model.data : null
+      const base = data ? (getEmailLocal(data.email) || (data.referralCode || '')) : (model.label || '')
+      const uid = data && data.userId !== undefined ? Number(data.userId) : null
+      const cnt = uid != null ? downlineCounts.value[uid] : undefined
+      const newLabel = (typeof cnt === 'number') ? `${base} (${cnt})` : base
+      if (model.label !== newLabel) {
+        graph.updateItem(item, { label: newLabel })
+      }
+    }
+  } catch (e) {
+    console.error('applyCountsToGraph failed', e)
+  }
+}
+
+// 向后端请求当前树的下线数，并更新标签
+const refreshDownlineCountsForTree = async () => {
+  try {
+    if (!currentTreeData.value) return
+    const idsSet = new Set()
+    collectUserIds(currentTreeData.value, idsSet)
+    const ids = Array.from(idsSet)
+    if (!ids.length) return
+    const resp = await getDownlineCountBatch(ids)
+    if (resp && resp.success) {
+      downlineCounts.value = resp.data || {}
+      applyCountsToGraph()
+    }
+  } catch (e) {
+    console.error('refreshDownlineCountsForTree failed', e)
+  }
+}
+
 const applyTreeOption = (treeData) => {
   if (!chartContainer.value) return
   if (graph) {
@@ -290,18 +344,7 @@ const applyTreeOption = (treeData) => {
     modes: {
       default: [
         'drag-canvas',
-        'zoom-canvas',
-        {
-          type: 'collapse-expand',
-          trigger: 'dblclick',
-          shouldBegin: (e) => true,
-          onChange: (item, collapsed) => {
-            const model = item.get('model')
-            model.collapsed = collapsed
-            const nodeVal = (model && model.data && model.data.value) ? model.data.value : model.id
-            updateCollapsedInSource(currentTreeData.value, nodeVal, collapsed)
-          }
-        }
+        'zoom-canvas'
       ]
     },
     layout: {
@@ -346,15 +389,32 @@ const applyTreeOption = (treeData) => {
 
   // Position root to left-middle of graph window
   translateRootToLeftMiddle()
+  // 初次渲染后刷新计数
+  setTimeout(() => { refreshDownlineCountsForTree() }, 0)
 
-  // On click last node (leaf), fetch and attach 3-level downlines dynamically
+  // On click: toggle collapse/expand OR dynamically load children for leaf
   graph.off('node:click')
   graph.on('node:click', async (evt) => {
     try {
       const model = evt?.item?.getModel()
       if (!model || !model.data) return
       const isLeaf = !model.children || model.children.length === 0
-      if (!isLeaf) return
+      if (!isLeaf) {
+        // 已有children，则切换折叠状态
+        const currentCollapsed = !!model.collapsed
+        const nodeVal = (model && model.data && model.data.value) ? model.data.value : model.id
+        updateCollapsedInSource(currentTreeData.value, nodeVal, !currentCollapsed)
+        graph.updateItem(evt.item, { collapsed: !currentCollapsed })
+        const handler = () => {
+          translateRootToLeftMiddle()
+          graph.off('afterlayout', handler)
+        }
+        graph.on('afterlayout', handler)
+        graph.changeData(toG6Tree(currentTreeData.value))
+        // 展开/收起后重新应用计数到标签
+        setTimeout(() => { applyCountsToGraph() }, 0)
+        return
+      }
 
       const userId = model.data.userId
       if (!userId) return
@@ -425,6 +485,10 @@ const applyTreeOption = (treeData) => {
       }
       graph.on('afterlayout', handler)
       graph.changeData(newData)
+      // 数据改变后刷新计数
+      setTimeout(() => { refreshDownlineCountsForTree() }, 0)
+      // 也立即应用已有的计数数据，避免闪烁
+      setTimeout(() => { applyCountsToGraph() }, 0)
     } catch (e) {
       console.error('Dynamic load downlines failed', e)
     }
@@ -892,6 +956,8 @@ const appendDownline = ({ parentReferralCode, newDownline }) => {
     }
     graph.on('afterlayout', handler)
     graph.changeData(newData)
+    // 数据改变后刷新计数
+    setTimeout(() => { refreshDownlineCountsForTree() }, 0)
   } catch (e) {
     console.error('appendDownline failed', e)
   }
@@ -1051,6 +1117,8 @@ const reparentMember = async ({ id, newReferredByCode }) => {
     }
     graph.on('afterlayout', handler)
     graph.changeData(newData)
+    // 数据改变后刷新计数
+    setTimeout(() => { refreshDownlineCountsForTree() }, 0)
   } catch (e) {
     console.error('reparentMember failed', e)
   }
