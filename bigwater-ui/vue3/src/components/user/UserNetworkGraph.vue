@@ -142,6 +142,7 @@ const modalContainer = ref(null)
 let chart = null
 let resizeObserver = null
 let keepAliveTimer = null
+const currentTreeData = ref(null)
 
 // Helper functions
 const getInitials = (name) => {
@@ -249,6 +250,21 @@ const applyTreeOption = (treeData) => {
   }
   // notMerge=true, replaceMerge series
   chart.setOption(option, true)
+}
+
+// Toggle collapsed state of a node by value in currentTreeData
+const toggleNodeCollapsedByValue = (root, targetValue) => {
+  if (!root) return false;
+  if (root.value === targetValue) {
+    root.collapsed = !root.collapsed;
+    return true;
+  }
+  if (Array.isArray(root.children)) {
+    for (let i = 0; i < root.children.length; i++) {
+      if (toggleNodeCollapsedByValue(root.children[i], targetValue)) return true;
+    }
+  }
+  return false;
 }
 
 // Debug functions
@@ -510,10 +526,11 @@ const initChart = () => {
       const treeData = prepareTreeData()
       console.log('Tree data prepared:', treeData)
       console.log('Tree data children count:', treeData.children ? treeData.children.length : 0)
+      currentTreeData.value = treeData
       
       console.log('Applying tree option...')
       try {
-        applyTreeOption(treeData)
+        applyTreeOption(currentTreeData.value)
         console.log('Tree chart option applied')
       } catch (error) {
         console.error('Error setting tree chart option:', error)
@@ -564,7 +581,7 @@ const initChart = () => {
       setTimeout(() => {
         if (chart) {
           console.log('Reinforce update @300ms')
-          applyTreeOption(treeData)
+          applyTreeOption(currentTreeData.value || treeData)
           chart.resize()
         }
       }, 300)
@@ -599,6 +616,23 @@ const initChart = () => {
       }
       
       window.addEventListener('resize', handleResize)
+
+      // Click to expand/collapse descendants
+      chart.off('click')
+      chart.on('click', (params) => {
+        try {
+          if (!params || params.seriesType !== 'tree') return
+          const targetVal = params?.data?.value
+          if (targetVal === undefined || targetVal === null) return
+          if (!currentTreeData.value) return
+          const changed = toggleNodeCollapsedByValue(currentTreeData.value, targetVal)
+          if (changed) {
+            applyTreeOption(currentTreeData.value)
+          }
+        } catch (e) {
+          console.error('Toggle collapse failed:', e)
+        }
+      })
       
       console.log('=== CHART INITIALIZATION COMPLETE ===')
       
@@ -613,55 +647,8 @@ const initChart = () => {
 watch(() => props.downlines, () => {
   if (chart && viewMode.value === 'graph') {
     nextTick(() => {
-      const treeData = prepareTreeData()
-      const seriesUpdate = {
-        name: 'Team Network',
-        type: 'tree',
-        data: [treeData],
-        top: '2%',
-        left: '5%',
-        bottom: '5%',
-        right: '5%',
-        symbolSize: 25,
-        orient: 'TB',
-        initialTreeDepth: -1,
-        roam: true,
-        label: {
-          show: true,
-          position: 'left',
-          verticalAlign: 'middle',
-          align: 'right',
-          fontSize: 14,
-          color: '#333',
-          backgroundColor: 'rgba(255,255,255,0.8)',
-          padding: [4, 8],
-          borderRadius: 4
-        },
-        leaves: {
-          label: {
-            position: 'right',
-            verticalAlign: 'middle',
-            align: 'left',
-            backgroundColor: 'rgba(255,255,255,0.8)',
-            padding: [4, 8],
-            borderRadius: 4
-          }
-        },
-        emphasis: {
-          focus: 'descendant',
-          lineStyle: { width: 3 }
-        },
-        expandAndCollapse: true,
-        animationDuration: 550,
-        animationDurationUpdate: 750,
-        lineStyle: {
-          color: '#ccc',
-          width: 2,
-          curveness: 0.1
-        }
-      }
-      // Use notMerge=true to avoid accidental series clearing by merge
-      chart.setOption({ series: [seriesUpdate] }, true)
+      currentTreeData.value = prepareTreeData()
+      applyTreeOption(currentTreeData.value)
     })
   }
 }, { deep: true })

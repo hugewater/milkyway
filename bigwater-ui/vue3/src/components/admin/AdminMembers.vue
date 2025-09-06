@@ -1105,6 +1105,12 @@ const submitAddDownline = async () => {
     downlineMsg.value = resp.message || (resp.success ? 'Downline added successfully' : (resp.error || 'Failed to add downline'))
     if (resp.success) {
       showAddDownlineModal.value = false
+      try {
+        offset.value = 0
+        await loadMembers()
+      } catch (e) {
+        console.error('Failed to refresh members after adding downline:', e)
+      }
     }
   } catch (e) {
     downlineOk.value = false

@@ -2774,6 +2774,7 @@ public class BigWaterResource {
             String phone = (String) downlineData.get("phone");
             String password = (String) downlineData.get("password");
             String referralCode = (String) downlineData.get("referralCode");
+            String levelStr = (String) downlineData.get("level");
             
             if (email == null || email.trim().isEmpty()) {
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -2815,8 +2816,17 @@ public class BigWaterResource {
             newDownline.setRole(User.UserRole.SUBSCRIBER);
             // Make new member ACTIVE by default
             newDownline.setStatus(User.UserStatus.ACTIVE);
-            // Default new member to lowest displayed title until conditions met
-            newDownline.setLevel(User.UserLevel.CHIEF); // stored enum unchanged; frontend maps weeks<24 to "Customer"
+            // Set level from request if provided; fallback to CHIEF for unknown or missing values
+            if (levelStr != null && !levelStr.trim().isEmpty()) {
+                try {
+                    User.UserLevel parsed = User.UserLevel.fromString(levelStr.trim());
+                    newDownline.setLevel(parsed != null ? parsed : User.UserLevel.CHIEF);
+                } catch (Exception ignore) {
+                    newDownline.setLevel(User.UserLevel.CHIEF);
+                }
+            } else {
+                newDownline.setLevel(User.UserLevel.CHIEF);
+            }
             
             // Update the user with all fields
             newDownline = userService.updateUser(newDownline);
