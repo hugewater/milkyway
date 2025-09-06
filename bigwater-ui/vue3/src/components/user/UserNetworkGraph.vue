@@ -185,21 +185,23 @@ const buildSeries = (treeData) => ({
   name: 'Team Network',
   type: 'tree',
   data: [treeData],
-  top: '2%',
-  left: '5%',
-  bottom: '5%',
-  right: '5%',
-  symbol: 'emptyCircle',
+  top: '1%',
+  left: '1%',
+  bottom: '1%',
+  right: '1%',
+  symbol: 'circle',
   symbolSize: 8,
   orient: 'LR',
   initialTreeDepth: -1,
   roam: true,
   label: {
     show: true,
-    position: 'left',
-    verticalAlign: 'middle',
-    align: 'right',
-    fontSize: 12,
+    position: 'top',
+    verticalAlign: 'bottom',
+    align: 'center',
+    distance: 4,
+    offset: [0, -4],
+    fontSize: 11,
     color: '#374151',
     formatter: (params) => {
       const d = params.data || {}
@@ -208,10 +210,12 @@ const buildSeries = (treeData) => ({
   },
   leaves: {
     label: {
-      position: 'right',
-      verticalAlign: 'middle',
-      align: 'left',
-      fontSize: 12,
+      position: 'top',
+      verticalAlign: 'bottom',
+      align: 'center',
+      distance: 4,
+      offset: [0, -4],
+      fontSize: 11,
       color: '#374151',
       formatter: (params) => {
         const d = params.data || {}
@@ -223,15 +227,15 @@ const buildSeries = (treeData) => ({
     focus: 'descendant',
     lineStyle: { width: 3 }
   },
+  edgeShape: 'polyline',
+  edgeForkPosition: '15%',
   expandAndCollapse: true,
   animationDuration: 550,
   animationDurationUpdate: 750,
   lineStyle: {
     color: '#d1d5db',
-    width: 1.5
-  },
-  edgeShape: 'curve',
-  edgeForkPosition: '50%'
+    width: 1
+  }
 })
 
 const applyTreeOption = (treeData) => {
