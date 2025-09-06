@@ -163,17 +163,17 @@ let graph = null
 const contextMenu = ref(null)
 let lastContextNode = null
 
-// Helper: move root到左侧且靠近顶部
-const translateRootToLeftMiddle = () => {
+// Helper: 将根节点移动到窗口顶部居中位置
+const translateRootToTopCenter = () => {
   try {
     if (!graph || !chartContainer.value || !currentTreeData.value) return
     const rootId = String(currentTreeData.value.value)
     const rootItem = graph.findById(rootId)
     if (!rootItem) return
     const m = rootItem.getModel()
-    const leftPadding = 80
-    const topPadding = 100
-    const targetX = leftPadding
+    const containerWidth = chartContainer.value.clientWidth || 800
+    const topPadding = 80
+    const targetX = Math.floor(containerWidth / 2)
     const targetY = topPadding
     const dx = targetX - (m.x || 0)
     const dy = targetY - (m.y || 0)
@@ -349,12 +349,12 @@ const applyTreeOption = (treeData) => {
     },
     layout: {
       type: 'compactBox',
-      direction: 'LR',
+      direction: 'TB',
       getId: (d) => d.id,
       getHeight: () => 16,
       getWidth: () => 60,
-      getVGap: () => 12,
-      getHGap: () => 24
+      getVGap: () => 24,
+      getHGap: () => 12
     },
     defaultNode: {
       type: 'circle',
@@ -387,8 +387,8 @@ const applyTreeOption = (treeData) => {
   graph.data(data)
   graph.render()
 
-  // Position root to left-middle of graph window
-  translateRootToLeftMiddle()
+  // Position root to top-center of graph window
+  translateRootToTopCenter()
   // 初次渲染后刷新计数
   setTimeout(() => { refreshDownlineCountsForTree() }, 0)
 
@@ -400,18 +400,13 @@ const applyTreeOption = (treeData) => {
       if (!model || !model.data) return
       const isLeaf = !model.children || model.children.length === 0
       if (!isLeaf) {
-        // 已有children，则切换折叠状态
+        // 已有children，则切换折叠状态；不重设数据，避免平移被重置
         const currentCollapsed = !!model.collapsed
         const nodeVal = (model && model.data && model.data.value) ? model.data.value : model.id
         updateCollapsedInSource(currentTreeData.value, nodeVal, !currentCollapsed)
         graph.updateItem(evt.item, { collapsed: !currentCollapsed })
-        const handler = () => {
-          translateRootToLeftMiddle()
-          graph.off('afterlayout', handler)
-        }
-        graph.on('afterlayout', handler)
-        graph.changeData(toG6Tree(currentTreeData.value))
-        // 展开/收起后重新应用计数到标签
+        // 仅请求重新布局，保持 translate/zoom
+        try { graph.layout() } catch {}
         setTimeout(() => { applyCountsToGraph() }, 0)
         return
       }
@@ -480,7 +475,7 @@ const applyTreeOption = (treeData) => {
       // 更新图数据并保持位置
       const newData = toG6Tree(currentTreeData.value)
       const handler = () => {
-        translateRootToLeftMiddle()
+        translateRootToTopCenter()
         graph.off('afterlayout', handler)
       }
       graph.on('afterlayout', handler)
@@ -951,7 +946,7 @@ const appendDownline = ({ parentReferralCode, newDownline }) => {
     // Update graph data
     const newData = toG6Tree(currentTreeData.value)
     const handler = () => {
-      translateRootToLeftMiddle()
+      translateRootToTopCenter()
       graph.off('afterlayout', handler)
     }
     graph.on('afterlayout', handler)
@@ -993,7 +988,7 @@ const updateMember = ({ id, email, firstName, lastName, referralCode }) => {
     if (!changed) return
     const newData = toG6Tree(currentTreeData.value)
     const handler = () => {
-      translateRootToLeftMiddle()
+      translateRootToTopCenter()
       graph.off('afterlayout', handler)
     }
     graph.on('afterlayout', handler)
@@ -1112,7 +1107,7 @@ const reparentMember = async ({ id, newReferredByCode }) => {
     // Redraw
     const newData = toG6Tree(currentTreeData.value)
     const handler = () => {
-      translateRootToLeftMiddle()
+      translateRootToTopCenter()
       graph.off('afterlayout', handler)
     }
     graph.on('afterlayout', handler)
