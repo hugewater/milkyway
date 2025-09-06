@@ -327,7 +327,7 @@
     </div>
 
     <!-- Edit Member Modal -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1200]">
       <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <h3 class="text-lg font-bold text-deep-ocean mb-4">Edit Member</h3>
         <form @submit.prevent="saveEditMember">
@@ -854,7 +854,7 @@
     </div>
 
     <!-- Add Direct Downline Modal -->
-    <div v-if="showAddDownlineModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div v-if="showAddDownlineModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1200]">
       <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <h3 class="text-lg font-bold text-deep-ocean mb-4">Add Direct Downline</h3>
         <p class="text-sm text-gray-600 mb-4">Upline: {{ downlineSelected?.email }} · Referral Code: {{ downlineSelected?.referralCode }}</p>
@@ -1119,6 +1119,8 @@ const submitAddDownline = async () => {
       // 刷新表格数据
       offset.value = 0
       await loadMembers()
+      // 刷新图表弹窗 Table View 数据
+      await refreshGraphNetwork()
     }
   } catch (e) {
     downlineOk.value = false
@@ -1308,6 +1310,8 @@ const saveEditMember = async () => {
             referredByCode: newRefBy || ''
           }
         }
+        // 刷新图表弹窗的 Table View 数据
+        await refreshGraphNetwork()
       } catch (e) { console.warn('graph sync after edit failed', e) }
       
       // Clear message after 3 seconds
@@ -1762,6 +1766,18 @@ const showUplines = async (member) => {
   } finally {
     uplineDownlineLoading.value = false
   }
+}
+
+// Refresh graph popup data (downlines/uplines) when modal is open
+const refreshGraphNetwork = async () => {
+  try {
+    if (!showNetworkGraphModal.value || !selectedUser.value?.id) return
+    const resp = await getUserNetwork(selectedUser.value.id)
+    if (resp && resp.success) {
+      uplines.value = resp.data.uplines || []
+      downlines.value = resp.data.downlines || []
+    }
+  } catch (e) {}
 }
 
 const simulateUplineDownlineData = async (memberId) => {

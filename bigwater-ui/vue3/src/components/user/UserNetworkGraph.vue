@@ -91,6 +91,7 @@
                 </button>
               </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contribution</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -125,6 +126,9 @@
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(downline.joinDate || downline.createdAt) }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ downline.referralCode || 'N/A' }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-forest-green">${{ (downline.contribution != null ? downline.contribution : 0) }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <button class="px-2 py-1 rounded hover:bg-gray-100" title="Actions" @click="openTableActions(downline, $event)">⋯</button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -155,6 +159,7 @@
                     </button>
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contribution</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -189,6 +194,9 @@
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(downline.joinDate || downline.createdAt) }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ downline.referralCode || 'N/A' }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-forest-green">${{ (downline.contribution != null ? downline.contribution : 0) }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <button class="px-2 py-1 rounded hover:bg-gray-100" title="Actions" @click="openTableActions(downline, $event)">⋯</button>
+                  </td>
             </tr>
           </tbody>
         </table>
@@ -253,11 +261,29 @@
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(downline.joinDate || downline.createdAt) }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ downline.referralCode || 'N/A' }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-forest-green">${{ (downline.contribution != null ? downline.contribution : 0) }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <button class="px-2 py-1 rounded hover:bg-gray-100" title="Actions" @click="openTableActions(downline, $event)">⋯</button>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
+
+        <!-- Table row actions menu -->
+        <teleport to="body">
+          <div
+            v-if="tableAct.open"
+            ref="tableMenu"
+            class="fixed z-[1100] bg-white border border-gray-200 rounded-md shadow-lg w-44 py-1"
+            :style="{ top: tableAct.pos.top + 'px', left: tableAct.pos.left + 'px' }"
+            @click.stop
+          >
+            <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="onRowAddDownline()">Add Downline</button>
+            <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="onRowEditMember()">Edit Member</button>
+            <button class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" @click="onRowCopyReferral()">Copy Referral Code</button>
+          </div>
+        </teleport>
       </div>
 
       <!-- Footer Actions -->
@@ -312,6 +338,61 @@ const footerActions = ref(null)
 let graph = null
 const contextMenu = ref(null)
 let lastContextNode = null
+// Table row actions state
+const tableAct = ref({ open: false, pos: { top: 0, left: 0 }, row: null })
+
+const openTableActions = (row, evt) => {
+  try {
+    tableAct.value.row = row
+    const rect = evt.currentTarget.getBoundingClientRect()
+    const menuWidth = 176
+    const menuHeight = 140
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+    let left = rect.left
+    if (left + menuWidth + 8 > viewportWidth) left = Math.max(8, viewportWidth - menuWidth - 8)
+    else left = Math.max(8, left)
+    let top = rect.bottom + 4
+    if (top + menuHeight + 8 > viewportHeight) top = Math.max(8, rect.top - menuHeight - 4)
+    tableAct.value.pos = { top, left }
+    tableAct.value.open = true
+  } catch {}
+}
+
+const tableMenu = ref(null)
+const closeTableActions = () => { tableAct.value.open = false; tableAct.value.row = null }
+const onGlobalClick = (e) => {
+  if (!tableAct.value.open) return
+  const menuEl = tableMenu.value
+  if (menuEl && typeof menuEl.contains === 'function' && menuEl.contains(e.target)) return
+  closeTableActions()
+}
+onMounted(() => { window.addEventListener('click', onGlobalClick, true) })
+onUnmounted(() => { window.removeEventListener('click', onGlobalClick, true) })
+
+const onRowAddDownline = () => {
+  const r = tableAct.value.row
+  closeTableActions()
+  if (!r) return
+  emit('add-downline', { userId: r.id, referralCode: r.referralCode, email: r.email })
+}
+const onRowEditMember = () => {
+  const r = tableAct.value.row
+  closeTableActions()
+  if (!r) return
+  emit('edit-member', { id: r.id, email: r.email, referralCode: r.referralCode, name: r.name || '' })
+}
+const onRowCopyReferral = async () => {
+  const r = tableAct.value.row
+  closeTableActions()
+  if (!r || !r.referralCode) return
+  try {
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(r.referralCode)
+    else {
+      const ta = document.createElement('textarea'); ta.value = r.referralCode; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); document.body.removeChild(ta)
+    }
+  } catch (e) { console.error('Copy referral (row) failed', e) }
+}
 
 // Collapsible sections for Table View
 const showL1 = ref(true)
