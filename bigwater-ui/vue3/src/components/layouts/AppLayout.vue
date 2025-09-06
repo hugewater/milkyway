@@ -48,7 +48,9 @@
             @click="closeSidebar"
           >
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.iconPath"></path>
+              <path v-if="typeof item.iconPath === 'string' && item.iconPath.length > 0"
+                    stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.iconPath"></path>
+              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M0 0"></path>
             </svg>
             <span class="text-sm font-medium">{{ item.name }}</span>
           </router-link>

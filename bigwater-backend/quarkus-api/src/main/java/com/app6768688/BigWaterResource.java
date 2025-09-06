@@ -2010,6 +2010,27 @@ public class BigWaterResource {
     }
 
     @GET
+    @Path("/users/{userId}/downlines")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUserDownlines(@PathParam("userId") Long userId,
+                                     @QueryParam("levels") @DefaultValue("3") int levels) {
+        try {
+            List<User> downlines = userService.getDownlinesByUserId(userId, levels);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", downlines);
+            response.put("count", downlines.size());
+            response.put("levels", Math.max(1, Math.min(levels, 5)));
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+        }
+    }
+
+    @GET
     @Path("/test-db")
     @Produces(MediaType.APPLICATION_JSON)
     public Response testDatabase() {

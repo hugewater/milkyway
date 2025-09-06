@@ -3,7 +3,7 @@
        ref="modalContainer"
        :style="{ minWidth: '800px', minHeight: '600px' }">
     <!-- Header (no title) -->
-    <div class="flex items-center justify-end p-2">
+    <div class="flex items-center justify-end p-2" ref="headerActions">
       <div class="flex items-center space-x-3">
         <button
           @click="$emit('close')"
@@ -19,7 +19,7 @@
     <!-- Content -->
     <div class="p-3 flex flex-col h-full">
       <!-- Toggle Buttons -->
-      <div class="flex justify-center mb-2">
+      <div class="flex justify-center mb-2" ref="toggleBar">
         <div class="bg-gray-100 rounded-lg p-1">
           <button
             @click="viewMode = 'graph'"
@@ -48,8 +48,16 @@
       </div>
 
       <!-- Graph View -->
-      <div v-if="viewMode === 'graph'" class="w-full flex-1 min-h-0 overflow-auto">
-        <div ref="chartContainer" id="chartContainer" class="w-full h-full" style="min-height: 400px;"></div>
+      <div v-if="viewMode === 'graph'" class="w-full flex-1 min-h-0 overflow-auto relative">
+        <div
+          ref="chartContainer"
+          id="chartContainer"
+          class="w-full"
+          :style="{ minHeight: chartHeight + 'px', height: chartHeight + 'px' }"
+        ></div>
+        <div ref="contextMenu" class="absolute bg-white border border-gray-200 rounded-md shadow-lg text-sm hidden z-50">
+          <button @click="onContextAddDownline" class="block w-full text-left px-4 py-2 hover:bg-gray-50">Add Downline</button>
+        </div>
       </div>
 
       <!-- Table View -->
@@ -103,7 +111,7 @@
       </div>
 
       <!-- Footer Actions -->
-      <div class="mt-4 pt-4 border-t border-gray-200 flex justify-end">
+      <div class="mt-4 pt-4 border-t border-gray-200 flex justify-end" ref="footerActions">
         <button
           @click="$emit('close')"
           class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
@@ -117,7 +125,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import * as echarts from 'echarts'
+import { getUserNetwork } from '../../utils/api.js'
+import * as G6Mod from '@antv/g6'
+const G6Lib = (G6Mod && (G6Mod.default && G6Mod.default.TreeGraph ? G6Mod.default : G6Mod))
 
 const props = defineProps({
   selectedUser: {
@@ -134,7 +144,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close','add-downline'])
 
 const viewMode = ref('graph')
 const chartContainer = ref(null)
@@ -143,6 +153,46 @@ let chart = null
 let resizeObserver = null
 let keepAliveTimer = null
 const currentTreeData = ref(null)
+const chartHeight = ref(280) // initial; will auto-fit to remaining space
+const headerActions = ref(null)
+const toggleBar = ref(null)
+const footerActions = ref(null)
+let graph = null
+const contextMenu = ref(null)
+let lastContextNode = null
+
+// Helper: move root到左侧且靠近顶部
+const translateRootToLeftMiddle = () => {
+  try {
+    if (!graph || !chartContainer.value || !currentTreeData.value) return
+    const rootId = String(currentTreeData.value.value)
+    const rootItem = graph.findById(rootId)
+    if (!rootItem) return
+    const m = rootItem.getModel()
+    const leftPadding = 80
+    const topPadding = 100
+    const targetX = leftPadding
+    const targetY = topPadding
+    const dx = targetX - (m.x || 0)
+    const dy = targetY - (m.y || 0)
+    if (dx !== 0 || dy !== 0) graph.translate(dx, dy)
+  } catch {}
+}
+
+// Helper: 同步 G6 折叠状态到源数据 currentTreeData
+const updateCollapsedInSource = (root, value, collapsed) => {
+  if (!root) return false
+  if (String(root.value) === String(value)) {
+    root.collapsed = collapsed
+    return true
+  }
+  if (root.children && root.children.length) {
+    for (let i = 0; i < root.children.length; i++) {
+      if (updateCollapsedInSource(root.children[i], value, collapsed)) return true
+    }
+  }
+  return false
+}
 
 // Helper functions
 const getInitials = (name) => {
@@ -181,82 +231,206 @@ const getNodeLevel = (data) => {
   return 'Member'
 }
 
-const buildSeries = (treeData) => ({
-  name: 'Team Network',
-  type: 'tree',
-  data: [treeData],
-  top: '1%',
-  left: '1%',
-  bottom: '1%',
-  right: '1%',
-  symbol: 'circle',
-  symbolSize: 8,
-  orient: 'LR',
-  initialTreeDepth: -1,
-  roam: true,
-  label: {
-    show: true,
-    position: 'top',
-    verticalAlign: 'bottom',
-    align: 'center',
-    distance: 4,
-    offset: [0, -4],
-    fontSize: 11,
-    color: '#374151',
-    formatter: (params) => {
-      const d = params.data || {}
-      return d.referralCode || ''
-    }
-  },
-  leaves: {
-    label: {
-      position: 'top',
-      verticalAlign: 'bottom',
-      align: 'center',
-      distance: 4,
-      offset: [0, -4],
-      fontSize: 11,
-      color: '#374151',
-      formatter: (params) => {
-        const d = params.data || {}
-        return d.referralCode || ''
-      }
-    }
-  },
-  emphasis: {
-    focus: 'descendant',
-    lineStyle: { width: 3 }
-  },
-  edgeShape: 'polyline',
-  edgeForkPosition: '15%',
-  expandAndCollapse: true,
-  animationDuration: 550,
-  animationDurationUpdate: 750,
-  lineStyle: {
-    color: '#d1d5db',
-    width: 1
-  }
-})
+// Build G6 tree data
+const getEmailLocal = (email) => {
+  if (!email || typeof email !== 'string') return ''
+  const at = email.indexOf('@')
+  return at > 0 ? email.slice(0, at) : email
+}
+const toG6Tree = (root) => {
+  const mapNode = (n) => ({
+    id: String(n.value),
+    label: getEmailLocal(n.email) || (n.referralCode || ''),
+    data: n,
+    children: (n.children || []).map(mapNode),
+    collapsed: n.collapsed === true
+  })
+  return mapNode(root)
+}
 
 const applyTreeOption = (treeData) => {
-  if (!chart) return
-  const option = {
-    backgroundColor: '#f8fafc',
-    tooltip: {
-      trigger: 'item',
-      formatter: function(params) {
-        const d = params.data || {}
-        const email = d.email || 'N/A'
-        return `<div style="padding:8px; line-height:1.4; font-weight:600;">${email}</div>`
-      }
-    },
-    series: [buildSeries(treeData)]
+  if (!chartContainer.value) return
+  if (graph) {
+    try { graph.destroy() } catch {}
+    graph = null
   }
-  // notMerge=true, replaceMerge series
-  chart.setOption(option, true)
+  const width = chartContainer.value.clientWidth || 800
+  const height = chartHeight.value || 300
+
+  // Tooltip to show member email on hover
+  const tooltip = new G6Lib.Tooltip({
+    offsetX: 10,
+    offsetY: 10,
+    itemTypes: ['node'],
+    getContent: (e) => {
+      const model = e && e.item ? e.item.getModel() : null
+      const email = (model && model.data && model.data.email) ? model.data.email : 'N/A'
+      const local = getEmailLocal(email)
+      const referral = (model && model.data && model.data.referralCode) ? model.data.referralCode : ''
+      const div = document.createElement('div')
+      div.style.padding = '6px 8px'
+      div.style.background = '#ffffff'
+      div.style.border = '1px solid #e5e7eb'
+      div.style.borderRadius = '6px'
+      div.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'
+      div.innerHTML = `<div style="font-size:12px;color:#111827;">${local} <span style='color:#6b7280'>@</span></div>` +
+                      (referral ? `<div style="font-size:11px;color:#6b7280;">Code: ${referral}</div>` : '')
+      return div
+    }
+  })
+
+  graph = new G6Lib.TreeGraph({
+    container: chartContainer.value,
+    width,
+    height,
+    fitView: false,
+    plugins: [tooltip],
+    modes: {
+      default: [
+        'drag-canvas',
+        'zoom-canvas',
+        {
+          type: 'collapse-expand',
+          trigger: 'dblclick',
+          shouldBegin: (e) => true,
+          onChange: (item, collapsed) => {
+            const model = item.get('model')
+            model.collapsed = collapsed
+            const nodeVal = (model && model.data && model.data.value) ? model.data.value : model.id
+            updateCollapsedInSource(currentTreeData.value, nodeVal, collapsed)
+          }
+        }
+      ]
+    },
+    layout: {
+      type: 'compactBox',
+      direction: 'LR',
+      getId: (d) => d.id,
+      getHeight: () => 16,
+      getWidth: () => 60,
+      getVGap: () => 12,
+      getHGap: () => 24
+    },
+    defaultNode: {
+      type: 'circle',
+      size: 8,
+      style: { stroke: '#94a3b8', fill: '#e2e8f0' },
+      labelCfg: { position: 'top', offset: 4, style: { fontSize: 11, fill: '#374151' } }
+    },
+    defaultEdge: {
+      type: 'polyline',
+      style: { stroke: '#d1d5db', lineWidth: 1 }
+    }
+  })
+
+  graph.on('node:contextmenu', (evt) => {
+    evt.originalEvent.preventDefault()
+    lastContextNode = evt.item.getModel()
+    const menu = contextMenu.value
+    if (!menu) return
+    const rect = chartContainer.value.getBoundingClientRect()
+    menu.style.left = `${evt.clientX - rect.left}px`
+    menu.style.top = `${evt.clientY - rect.top}px`
+    menu.classList.remove('hidden')
+  })
+  graph.on('canvas:click', () => {
+    const menu = contextMenu.value
+    if (menu) menu.classList.add('hidden')
+  })
+
+  const data = toG6Tree(treeData)
+  graph.data(data)
+  graph.render()
+
+  // Position root to left-middle of graph window
+  translateRootToLeftMiddle()
+
+  // On click last node (leaf), fetch and attach 3-level downlines dynamically
+  graph.off('node:click')
+  graph.on('node:click', async (evt) => {
+    try {
+      const model = evt?.item?.getModel()
+      if (!model || !model.data) return
+      const isLeaf = !model.children || model.children.length === 0
+      if (!isLeaf) return
+
+      const userId = model.data.userId
+      if (!userId) return
+
+      // Load network for this node
+      const resp = await getUserNetwork(userId)
+      if (!resp || !resp.success) return
+      const dl = Array.isArray(resp.data?.downlines) ? resp.data.downlines : []
+      // Update our source tree (currentTreeData) then re-render with applyTreeOption
+      const findById = (root, id) => {
+        if (!root) return null
+        if (String(root.value) === String(id)) return root
+        if (root.children) {
+          for (let i = 0; i < root.children.length; i++) {
+            const r = findById(root.children[i], id)
+            if (r) return r
+          }
+        }
+        return null
+      }
+      const target = findById(currentTreeData.value, model.data.value)
+      if (!target) return
+      const mk = (m, tag) => ({
+        name: m.name,
+        value: `${tag}_${m.id}`,
+        email: m.email || '',
+        referralCode: m.referralCode || '',
+        userId: m.id,
+        collapsed: true,
+        children: []
+      })
+      const ch = []
+      const l1 = dl.filter(m => m.referredByCode === (target.referralCode || ''))
+      l1.forEach(m1 => {
+        const n1 = mk(m1, 'l1')
+        const l2 = dl.filter(m => m.referredByCode === m1.referralCode)
+        l2.forEach(m2 => {
+          const n2 = mk(m2, 'l2')
+          const l3 = dl.filter(m => m.referredByCode === m2.referralCode)
+          l3.forEach(m3 => n2.children.push(mk(m3, 'l3')))
+          n1.children.push(n2)
+        })
+        ch.push(n1)
+      })
+      if (ch.length === 0) return
+      target.children = ch
+      // 保持现有展开状态：把沿途祖先的 collapsed 设为 false，避免回到只显示一层
+      const ensureAncestorsExpanded = (root, targetVal) => {
+        if (!root) return false
+        if (String(root.value) === String(targetVal)) return true
+        if (root.children) {
+          for (let i = 0; i < root.children.length; i++) {
+            if (ensureAncestorsExpanded(root.children[i], targetVal)) {
+              root.collapsed = false
+              return true
+            }
+          }
+        }
+        return false
+      }
+      ensureAncestorsExpanded(currentTreeData.value, target.value)
+      target.collapsed = false
+      // 更新图数据并保持位置
+      const newData = toG6Tree(currentTreeData.value)
+      const handler = () => {
+        translateRootToLeftMiddle()
+        graph.off('afterlayout', handler)
+      }
+      graph.on('afterlayout', handler)
+      graph.changeData(newData)
+    } catch (e) {
+      console.error('Dynamic load downlines failed', e)
+    }
+  })
 }
 
 // Toggle collapsed state of a node by value in currentTreeData
+// Only affect the clicked node; other nodes keep their current state
 const toggleNodeCollapsedByValue = (root, targetValue) => {
   if (!root) return false;
   if (root.value === targetValue) {
@@ -443,6 +617,7 @@ const prepareTreeData = () => {
     value: props.selectedUser.id,
     email: props.selectedUser.email || '',
     referralCode: props.selectedUser.referralCode || props.selectedUser.code || '',
+    userId: props.selectedUser.id,
     itemStyle: { color: '#1e40af' },
     label: { fontSize: 12, color: '#374151' },
     symbolSize: 10,
@@ -461,9 +636,12 @@ const prepareTreeData = () => {
     value: `${tag}_${m.id}`,
     email: m.email || '',
     referralCode: m.referralCode || '',
+    userId: m.id,
     itemStyle: { color: tag === 'l1' ? '#60a5fa' : tag === 'l2' ? '#34d399' : '#fbbf24' },
     label: { fontSize: 12, color: '#374151' },
     symbolSize: 8,
+    // default collapsed so clicking toggles to expand just one level
+    collapsed: true,
     children: []
   })
 
@@ -478,7 +656,9 @@ const prepareTreeData = () => {
       // Level 3: referredByCode === m2.referralCode
       const l3 = (props.downlines || []).filter(m => m.referredByCode === m2.referralCode)
       l3.forEach(m3 => {
-        n2.children.push(makeNode(m3, 'l3'))
+        const n3 = makeNode(m3, 'l3')
+        // leaves can keep default collapsed true; no children by default
+        n2.children.push(n3)
       })
       n1.children.push(n2)
     })
@@ -512,106 +692,42 @@ const initChart = () => {
         chart = null
       }
 
-      console.log('Creating ECharts instance...')
       const container = chartContainer.value
-      console.log('Container element:', container)
-      console.log('Container dimensions:', {
-        offsetWidth: container.offsetWidth,
-        offsetHeight: container.offsetHeight,
-        clientWidth: container.clientWidth,
-        clientHeight: container.clientHeight,
-        scrollWidth: container.scrollWidth,
-        scrollHeight: container.scrollHeight
-      })
-      
-      chart = echarts.init(chartContainer.value)
-      console.log('ECharts instance created:', chart)
       
       const treeData = prepareTreeData()
       console.log('Tree data prepared:', treeData)
       console.log('Tree data children count:', treeData.children ? treeData.children.length : 0)
       currentTreeData.value = treeData
       
-      console.log('Applying tree option...')
+      console.log('Applying G6 tree...')
       try {
         applyTreeOption(currentTreeData.value)
-        console.log('Tree chart option applied')
+        console.log('Tree graph rendered')
       } catch (error) {
         console.error('Error setting tree chart option:', error)
-        
-        console.log('Falling back to simple pie chart...')
-        const pieOption = {
-          backgroundColor: '#f8fafc',
-          title: {
-            text: 'Test Pie Chart - ECharts Test',
-            left: 'center',
-            top: 20,
-            textStyle: { color: '#1e40af', fontSize: 18 }
-          },
-          series: [
-            {
-              name: 'Test Data',
-              type: 'pie',
-              radius: '50%',
-              center: ['50%', '60%'],
-              data: [
-                { value: 1, name: 'You' },
-                { value: 1, name: 'Level 1' },
-                { value: 2, name: 'Level 2' },
-                { value: 1, name: 'Level 3' }
-              ]
-            }
-          ]
-        }
-        
-        try {
-          chart.setOption(pieOption)
-          console.log('Pie chart set successfully')
-        } catch (pieError) {
-          console.error('Even pie chart failed:', pieError)
-          chartContainer.value.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: center; height: 100%; font-size: 18px; color: #666;">
-              <div>
-                <h3>Chart Loading Failed</h3>
-                <p>Tree data: ${treeData.children ? treeData.children.length : 0} children</p>
-                <p>Please check console for details</p>
-              </div>
-            </div>
-          `
-        }
+        chartContainer.value.innerHTML = `<div style="padding: 12px; color:#dc2626;">Graph render failed</div>`
       }
       
-      // Keep-alive reinforcement to prevent disappearance
-      setTimeout(() => {
-        if (chart) {
-          console.log('Reinforce update @300ms')
-          applyTreeOption(currentTreeData.value || treeData)
-          chart.resize()
+      // Auto-fit chart height to fill remaining modal space
+      const fitHeight = () => {
+        if (!modalContainer.value || !chartContainer.value) return
+        const modalRect = modalContainer.value.getBoundingClientRect()
+        const headerH = headerActions.value ? headerActions.value.getBoundingClientRect().height : 0
+        const toggleH = toggleBar.value ? toggleBar.value.getBoundingClientRect().height : 0
+        const footerH = footerActions.value ? footerActions.value.getBoundingClientRect().height : 0
+        const paddings = 24 // approx vertical paddings/margins
+        const h = Math.max(240, Math.floor(modalRect.height - headerH - toggleH - footerH - paddings))
+        if (h !== chartHeight.value) {
+          chartHeight.value = h
+          if (graph) graph.changeSize(chartContainer.value.clientWidth, chartHeight.value)
         }
-      }, 300)
-
+      }
+      setTimeout(fitHeight, 50)
       keepAliveTimer && clearInterval(keepAliveTimer)
-      keepAliveTimer = setInterval(() => {
-        if (!chart || !chartContainer.value) return
-        const sizeOk = chartContainer.value.clientWidth > 0 && chartContainer.value.clientHeight > 0
-        if (sizeOk) {
-          chart.resize()
-        }
-        const opt = chart.getOption()
-        if (!opt || !opt.series || opt.series.length === 0) {
-          console.log('Series missing; reapply tree option')
-          applyTreeOption(treeData)
-        }
-      }, 2000)
       
       // Handle container resize
       const handleResize = () => {
-        if (!chart) return
-        console.log('Resizing chart...')
-        chart.resize()
-        // After resize, re-apply series to be safe
-        const td = prepareTreeData()
-        applyTreeOption(td)
+        fitHeight()
       }
       
       if (modalContainer.value && window.ResizeObserver) {
@@ -621,22 +737,12 @@ const initChart = () => {
       
       window.addEventListener('resize', handleResize)
 
-      // Click to expand/collapse descendants
-      chart.off('click')
-      chart.on('click', (params) => {
-        try {
-          if (!params || params.seriesType !== 'tree') return
-          const targetVal = params?.data?.value
-          if (targetVal === undefined || targetVal === null) return
-          if (!currentTreeData.value) return
-          const changed = toggleNodeCollapsedByValue(currentTreeData.value, targetVal)
-          if (changed) {
-            applyTreeOption(currentTreeData.value)
-          }
-        } catch (e) {
-          console.error('Toggle collapse failed:', e)
-        }
-      })
+      // Height auto-grow on expand
+      if (graph) {
+        graph.on('afteritemstatechange', (e) => {
+          fitHeight()
+        })
+      }
       
       console.log('=== CHART INITIALIZATION COMPLETE ===')
       
@@ -680,9 +786,8 @@ onUnmounted(() => {
   if (resizeObserver) {
     resizeObserver.disconnect()
   }
-  if (chart) {
-    chart.dispose()
-  }
+  // destroy g6 graph if exists
+  if (graph) try { graph.destroy() } catch {}
 })
 
 // Table sorting (table view)
@@ -707,6 +812,78 @@ const sortedDownlines = computed(() => {
   }
   return list
 })
+
+// Context menu: add downline action
+const onContextAddDownline = () => {
+  const menu = contextMenu.value
+  if (menu) menu.classList.add('hidden')
+  if (!lastContextNode || !lastContextNode.data) return
+  // Emit event with the user represented by this node so parent can open modal
+  emit('add-downline', {
+    userId: lastContextNode.data.userId,
+    referralCode: lastContextNode.data.referralCode,
+    email: lastContextNode.data.email
+  })
+}
+
+// Expose method to append a newly created downline under a parent by referral code
+const appendDownline = ({ parentReferralCode, newDownline }) => {
+  try {
+    if (!currentTreeData.value || !parentReferralCode || !newDownline) return
+    const findByReferral = (node, code) => {
+      if (!node) return null
+      if ((node.referralCode || '') === code) return node
+      if (node.children && node.children.length) {
+        for (let i = 0; i < node.children.length; i++) {
+          const found = findByReferral(node.children[i], code)
+          if (found) return found
+        }
+      }
+      return null
+    }
+    const parent = findByReferral(currentTreeData.value, parentReferralCode)
+    if (!parent) return
+    if (!parent.children) parent.children = []
+    const child = {
+      name: `${newDownline.firstName || ''} ${newDownline.lastName || ''}`.trim() || newDownline.email || '',
+      value: `dyn_${newDownline.id}`,
+      email: newDownline.email || '',
+      referralCode: newDownline.referralCode || '',
+      userId: newDownline.id,
+      collapsed: true,
+      children: []
+    }
+    parent.children.push(child)
+    parent.collapsed = false
+    // Keep ancestors expanded
+    const ensureAncestorsExpanded = (root, targetVal) => {
+      if (!root) return false
+      if (String(root.value) === String(targetVal)) return true
+      if (root.children) {
+        for (let i = 0; i < root.children.length; i++) {
+          if (ensureAncestorsExpanded(root.children[i], targetVal)) {
+            root.collapsed = false
+            return true
+          }
+        }
+      }
+      return false
+    }
+    ensureAncestorsExpanded(currentTreeData.value, parent.value)
+    // Update graph data
+    const newData = toG6Tree(currentTreeData.value)
+    const handler = () => {
+      translateRootToLeftMiddle()
+      graph.off('afterlayout', handler)
+    }
+    graph.on('afterlayout', handler)
+    graph.changeData(newData)
+  } catch (e) {
+    console.error('appendDownline failed', e)
+  }
+}
+
+defineExpose({ appendDownline })
 </script>
 
 <style scoped>

@@ -847,6 +847,8 @@
         :downlines="downlines"
         :loading="uplineDownlineLoading"
         @close="showNetworkGraphModal = false"
+        @add-downline="onGraphAddDownline"
+        ref="userGraphRef"
       />
     </div>
 
@@ -1105,12 +1107,17 @@ const submitAddDownline = async () => {
     downlineMsg.value = resp.message || (resp.success ? 'Downline added successfully' : (resp.error || 'Failed to add downline'))
     if (resp.success) {
       showAddDownlineModal.value = false
+      // 即时追加到图中
       try {
-        offset.value = 0
-        await loadMembers()
-      } catch (e) {
-        console.error('Failed to refresh members after adding downline:', e)
-      }
+        const parentReferralCode = downlineSelected.value.referralCode
+        const newDownline = resp.data || { id: Date.now(), email: payload.email, firstName: payload.firstName, lastName: payload.lastName, referralCode: '' }
+        if (userGraphRef.value && typeof userGraphRef.value.appendDownline === 'function') {
+          userGraphRef.value.appendDownline({ parentReferralCode, newDownline })
+        }
+      } catch (e) { console.warn('appendDownline to graph failed', e) }
+      // 刷新表格数据
+      offset.value = 0
+      await loadMembers()
     }
   } catch (e) {
     downlineOk.value = false
@@ -1816,4 +1823,22 @@ const showNetworkGraph = async (member) => {
     uplineDownlineLoading.value = false
   }
 }
+
+const onGraphAddDownline = (payload) => {
+  try {
+    if (!payload) return
+    // payload.userId 来自图节点真实用户ID
+    downlineSelected.value = {
+      id: payload.userId,
+      referralCode: payload.referralCode,
+      email: payload.email || ''
+    }
+    addDownlineForm.value = { email: '', firstName: '', lastName: '', phone: '', password: '', level: 'CUSTOMER' }
+    downlineMsg.value = ''
+    downlineOk.value = false
+    showAddDownlineModal.value = true
+  } catch (e) {}
+}
+
+const userGraphRef = ref(null)
 </script>

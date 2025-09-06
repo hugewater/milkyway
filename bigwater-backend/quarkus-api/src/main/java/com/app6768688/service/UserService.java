@@ -332,7 +332,7 @@ public class UserService {
         return uplines;
     }
 
-    private List<User> getDownlines(User user, int levels) {
+    public List<User> getDownlines(User user, int levels) {
         List<User> downlines = new ArrayList<>();
         
         // Get direct downlines (level 1)
@@ -362,5 +362,17 @@ public class UserService {
         }
         
         return downlines;
+    }
+
+    /**
+     * Helper for API: get downlines by user id with configurable depth
+     */
+    public List<User> getDownlinesByUserId(Long userId, int levels) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("User not found with ID: " + userId);
+        }
+        int depth = Math.max(1, Math.min(levels, 5)); // sanity limit
+        return getDownlines(userOpt.get(), depth);
     }
 }
