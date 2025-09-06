@@ -333,26 +333,28 @@ public class UserService {
     }
 
     public List<User> getDownlines(User user, int levels) {
+        // Only treat SUBSCRIBER role as "members" in the network
+        List<User> allSubs = userRepository.findByRole(User.UserRole.SUBSCRIBER);
         List<User> downlines = new ArrayList<>();
-        
+
         // Get direct downlines (level 1)
-        List<User> directDownlines = userRepository.findAll().stream()
+        List<User> directDownlines = allSubs.stream()
                 .filter(u -> user.getReferralCode().equals(u.getReferredByCode()))
                 .toList();
         downlines.addAll(directDownlines);
-        
+
         // Get indirect downlines (levels 2 and 3)
         if (levels > 1) {
             for (User directDownline : directDownlines) {
-                List<User> level2Downlines = userRepository.findAll().stream()
+                List<User> level2Downlines = allSubs.stream()
                         .filter(u -> directDownline.getReferralCode().equals(u.getReferredByCode()))
                         .toList();
                 downlines.addAll(level2Downlines);
-                
+
                 // Get level 3 downlines
                 if (levels > 2) {
                     for (User level2Downline : level2Downlines) {
-                        List<User> level3Downlines = userRepository.findAll().stream()
+                        List<User> level3Downlines = allSubs.stream()
                                 .filter(u -> level2Downline.getReferralCode().equals(u.getReferredByCode()))
                                 .toList();
                         downlines.addAll(level3Downlines);
@@ -360,7 +362,7 @@ public class UserService {
                 }
             }
         }
-        
+
         return downlines;
     }
 
@@ -380,7 +382,8 @@ public class UserService {
      * Count ALL descendants (downlines) under a user, unlimited depth.
      */
     public int countAllDownlinesByUser(User user) {
-        List<User> allUsers = userRepository.findAll();
+        // Count only SUBSCRIBER role as members
+        List<User> allUsers = userRepository.findByRole(User.UserRole.SUBSCRIBER);
         // Build adjacency by referredByCode -> children users
         Map<String, List<User>> byRef = new HashMap<>();
         for (User u : allUsers) {
@@ -412,12 +415,14 @@ public class UserService {
         Map<Long, Integer> result = new HashMap<>();
         if (userIds == null || userIds.isEmpty()) return result;
 
-        List<User> allUsers = userRepository.findAll();
+        // Build adjacency only from SUBSCRIBER members
+        List<User> allSubs = userRepository.findByRole(User.UserRole.SUBSCRIBER);
+        // Allow root/user lookup for ANY role (e.g., COMPANY/ADMIN) so their referralCode can seed the count
         Map<Long, User> idToUser = new HashMap<>();
-        for (User u : allUsers) idToUser.put(u.getId(), u);
+        for (User u : userRepository.findAll()) idToUser.put(u.getId(), u);
 
         Map<String, List<User>> byRef = new HashMap<>();
-        for (User u : allUsers) {
+        for (User u : allSubs) {
             String parentCode = u.getReferredByCode();
             if (parentCode == null) parentCode = "";
             byRef.computeIfAbsent(parentCode, k -> new ArrayList<>()).add(u);

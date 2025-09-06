@@ -1,5 +1,8 @@
 服务端分页 + 轻量筛选/排序 + 必要时虚拟滚动”
 
+insert into users (email, password_hash, role, status, referral_code, referred_by_code) 
+values ("a45@6768688.com", "thspU+/iVbmpyRApzS4w0jMBPhFzgQ==", "SUBSCRIBER", "ACTIVE", "KS1V7WZ7", "BESRNZ29");
+
 CREATE TABLE IF NOT EXISTS ai_agents (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(100) NOT NULL,

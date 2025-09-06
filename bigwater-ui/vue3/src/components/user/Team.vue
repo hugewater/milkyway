@@ -111,11 +111,14 @@
           
           <!-- Level 1 - Direct Referrals -->
           <div class="mb-6">
-            <h4 class="font-semibold text-deep-ocean mb-4 flex items-center">
+            <h4 class="font-semibold text-deep-ocean mb-4 flex items-center cursor-pointer select-none" @click="showL1 = !showL1" :aria-expanded="showL1.toString()">
               <span class="w-6 h-6 bg-ocean text-white rounded-full flex items-center justify-center text-sm mr-2">1</span>
               Level 1 - Direct Referrals ({{ level1Count }} members)
+              <svg class="w-4 h-4 ml-2 transition-transform" :class="showL1 ? 'rotate-90' : 'rotate-0'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              </svg>
             </h4>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" v-show="showL1">
               <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border border-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
@@ -174,11 +177,14 @@
 
           <!-- Level 2 - Indirect Referrals -->
           <div class="mb-6">
-            <h4 class="font-semibold text-deep-ocean mb-4 flex items-center">
+            <h4 class="font-semibold text-deep-ocean mb-4 flex items-center cursor-pointer select-none" @click="showL2 = !showL2" :aria-expanded="showL2.toString()">
               <span class="w-6 h-6 bg-forest-green text-white rounded-full flex items-center justify-center text-sm mr-2">2</span>
               Level 2 - Indirect Referrals ({{ level2Count }} members)
+              <svg class="w-4 h-4 ml-2 transition-transform" :class="showL2 ? 'rotate-90' : 'rotate-0'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              </svg>
             </h4>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" v-show="showL2">
               <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border border-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
@@ -237,11 +243,14 @@
 
           <!-- Level 3 - Third Level -->
           <div>
-            <h4 class="font-semibold text-deep-ocean mb-4 flex items-center">
+            <h4 class="font-semibold text-deep-ocean mb-4 flex items-center cursor-pointer select-none" @click="showL3 = !showL3" :aria-expanded="showL3.toString()">
               <span class="w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-sm mr-2">3</span>
               Level 3 - Third Level ({{ level3Count }} members)
+              <svg class="w-4 h-4 ml-2 transition-transform" :class="showL3 ? 'rotate-90' : 'rotate-0'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              </svg>
             </h4>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" v-show="showL3">
               <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border border-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
@@ -524,6 +533,10 @@ const showAddDownlineModal = ref(false)
 const selectedMember = ref(null)
 const loading = ref(false)
 const addingDownline = ref(false)
+// Collapsible states for L1/L2/L3 tables
+const showL1 = ref(true)
+const showL2 = ref(true)
+const showL3 = ref(true)
 const newDownlineForm = ref({
   email: '',
   firstName: '',
@@ -559,11 +572,18 @@ const calculateContribution = (user) => {
   return Math.floor(Math.random() * 200) + 50
 }
 
-// Derive display title; default new members to Customer until >=24 weeks
+// Derive display title directly from backend level
 const getDisplayUserLevel = (member) => {
-  const weeks = member?.weeksSubscribed ?? member?.subscriptionWeeks ?? 0
-  if (weeks < 24) return 'Customer'
-  return member?.level || 'Chief'
+  const lvl = (member?.level || '').toString().toUpperCase()
+  switch (lvl) {
+    case 'CUSTOMER': return 'Customer'
+    case 'CHIEF': return 'Chief'
+    case 'MAYOR': return 'Mayor'
+    case 'GOVERNOR': return 'Governor'
+    case 'MINISTER': return 'Minister'
+    case 'PRESIDENT': return 'President'
+    default: return 'Customer'
+  }
 }
 
 // Load team network data from API

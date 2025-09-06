@@ -49,6 +49,9 @@
 
       <!-- Graph View -->
       <div v-if="viewMode === 'graph'" class="w-full flex-1 min-h-0 overflow-auto relative">
+        <div class="mb-2 text-sm text-gray-700">
+          Total downlines: <span class="font-semibold">{{ rootDownlineCount == null ? '…' : rootDownlineCount }}</span>
+        </div>
         <div
           ref="chartContainer"
           id="chartContainer"
@@ -58,27 +61,40 @@
         <div ref="contextMenu" class="absolute bg-white border border-gray-200 rounded-md shadow-lg text-sm hidden z-50">
           <button @click="onContextAddDownline" class="block w-full text-left px-4 py-2 hover:bg-gray-50">Add Downline</button>
           <button @click="onContextEditMember" class="block w-full text-left px-4 py-2 hover:bg-gray-50 border-t border-gray-100">Edit Member</button>
+          <button @click="onContextCopyReferral" class="block w-full text-left px-4 py-2 hover:bg-gray-50 border-t border-gray-100">Copy Referral Code</button>
         </div>
       </div>
 
       <!-- Table View -->
       <div v-else class="overflow-x-auto flex-1 min-h-0">
-        <table class="min-w-full divide-y divide-gray-200">
+        <!-- Level 1 -->
+        <div class="mb-6">
+          <h4 class="font-semibold text-deep-ocean mb-4 flex items-center cursor-pointer select-none" @click="showL1 = !showL1" :aria-expanded="showL1.toString()">
+            <span class="w-6 h-6 bg-ocean text-white rounded-full flex items-center justify-center text-sm mr-2">1</span>
+            Level 1 - Direct Referrals ({{ l1Rows.length }} members)
+            <svg class="w-4 h-4 ml-2 transition-transform" :class="showL1 ? 'rotate-90' : 'rotate-0'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </h4>
+          <div class="overflow-x-auto" v-show="showL1">
+            <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border border-gray-200">
           <thead class="bg-gray-50">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <button @click="sortByReferral" class="inline-flex items-center gap-1 hover:text-gray-700">
                   Referral Code
                   <span v-if="sortKey === 'referralCode'">{{ sortAsc ? '▲' : '▼' }}</span>
                 </button>
               </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contribution</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="downline in sortedDownlines" :key="downline.id" class="hover:bg-gray-50">
+                <tr v-for="downline in l1Rows" :key="downline.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 w-10 h-10">
@@ -89,26 +105,159 @@
                   </div>
                   <div class="ml-4">
                     <div class="text-sm font-medium text-gray-900">{{ downline.name }}</div>
-                    <div class="text-xs text-gray-500 mt-1">Level {{ downline.networkLevel }}</div>
-                    <div class="text-xs text-gray-500 mt-1" title="Referral Code: {{ downline.referralCode || 'N/A' }}">
-                      Code: {{ downline.referralCode ? downline.referralCode.substring(0, 6) + '...' : 'N/A' }}
+                        <div class="text-xs text-gray-500 mt-1 break-all">{{ downline.email }}</div>
+                        <div class="text-xs text-gray-500 mt-1">{{ formatNetworkLevel(downline.networkLevel) }}</div>
                     </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          :class="getRankingBadgeClass(downline.level)">
+                      {{ getDisplayUserLevel(downline) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          :class="getStatusBadgeClass((downline.status || 'active').toLowerCase())">
+                      {{ (downline.status || 'active').toLowerCase() }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(downline.joinDate || downline.createdAt) }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ downline.referralCode || 'N/A' }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-forest-green">${{ (downline.contribution != null ? downline.contribution : 0) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Level 2 -->
+        <div class="mb-6">
+          <h4 class="font-semibold text-deep-ocean mb-4 flex items-center cursor-pointer select-none" @click="showL2 = !showL2" :aria-expanded="showL2.toString()">
+            <span class="w-6 h-6 bg-forest-green text-white rounded-full flex items-center justify-center text-sm mr-2">2</span>
+            Level 2 - Indirect Referrals ({{ l2Rows.length }} members)
+            <svg class="w-4 h-4 ml-2 transition-transform" :class="showL2 ? 'rotate-90' : 'rotate-0'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </h4>
+          <div class="overflow-x-auto" v-show="showL2">
+            <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border border-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button @click="sortByReferral" class="inline-flex items-center gap-1 hover:text-gray-700">
+                      Referral Code
+                      <span v-if="sortKey === 'referralCode'">{{ sortAsc ? '▲' : '▼' }}</span>
+                    </button>
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contribution</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="downline in l2Rows" :key="downline.id" class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0 w-10 h-10">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
+                             :class="getLevelColor(downline.networkLevel)">
+                          {{ getInitials(downline.name) }}
+                        </div>
+                      </div>
+                      <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-900">{{ downline.name }}</div>
+                        <div class="text-xs text-gray-500 mt-1 break-all">{{ downline.email }}</div>
+                        <div class="text-xs text-gray-500 mt-1">{{ formatNetworkLevel(downline.networkLevel) }}</div>
                   </div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                      :class="getLevelBadgeColor(downline.networkLevel)">
-                  Level {{ downline.networkLevel }}
+                          :class="getRankingBadgeClass(downline.level)">
+                      {{ getDisplayUserLevel(downline) }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ downline.email }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                {{ downline.referralCode || 'N/A' }}
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          :class="getStatusBadgeClass((downline.status || 'active').toLowerCase())">
+                      {{ (downline.status || 'active').toLowerCase() }}
+                    </span>
               </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(downline.joinDate || downline.createdAt) }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ downline.referralCode || 'N/A' }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-forest-green">${{ (downline.contribution != null ? downline.contribution : 0) }}</td>
             </tr>
           </tbody>
         </table>
+          </div>
+        </div>
+
+        <!-- Level 3 -->
+        <div>
+          <h4 class="font-semibold text-deep-ocean mb-4 flex items-center cursor-pointer select-none" @click="showL3 = !showL3" :aria-expanded="showL3.toString()">
+            <span class="w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-sm mr-2">3</span>
+            Level 3 - Third Level ({{ l3Rows.length }} members)
+            <svg class="w-4 h-4 ml-2 transition-transform" :class="showL3 ? 'rotate-90' : 'rotate-0'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </h4>
+          <div class="overflow-x-auto" v-show="showL3">
+            <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border border-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button @click="sortByReferral" class="inline-flex items-center gap-1 hover:text-gray-700">
+                      Referral Code
+                      <span v-if="sortKey === 'referralCode'">{{ sortAsc ? '▲' : '▼' }}</span>
+                    </button>
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contribution</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="downline in l3Rows" :key="downline.id" class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0 w-10 h-10">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
+                             :class="getLevelColor(downline.networkLevel)">
+                          {{ getInitials(downline.name) }}
+                        </div>
+                      </div>
+                      <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-900">{{ downline.name }}</div>
+                        <div class="text-xs text-gray-500 mt-1 break-all">{{ downline.email }}</div>
+                        <div class="text-xs text-gray-500 mt-1">{{ formatNetworkLevel(downline.networkLevel) }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          :class="getRankingBadgeClass(downline.level)">
+                      {{ getDisplayUserLevel(downline) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          :class="getStatusBadgeClass((downline.status || 'active').toLowerCase())">
+                      {{ (downline.status || 'active').toLowerCase() }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(downline.joinDate || downline.createdAt) }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ downline.referralCode || 'N/A' }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-forest-green">${{ (downline.contribution != null ? downline.contribution : 0) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- Footer Actions -->
@@ -155,6 +304,7 @@ let resizeObserver = null
 let keepAliveTimer = null
 const currentTreeData = ref(null)
 const downlineCounts = ref({})
+const rootDownlineCount = ref(null)
 const chartHeight = ref(280) // initial; will auto-fit to remaining space
 const headerActions = ref(null)
 const toggleBar = ref(null)
@@ -162,6 +312,16 @@ const footerActions = ref(null)
 let graph = null
 const contextMenu = ref(null)
 let lastContextNode = null
+
+// Collapsible sections for Table View
+const showL1 = ref(true)
+const showL2 = ref(true)
+const showL3 = ref(true)
+
+// Computed rows by L1/L2/L3
+const l1Rows = computed(() => (downlinesWithLevels.value || []).filter(d => d.networkLevel === 1))
+const l2Rows = computed(() => (downlinesWithLevels.value || []).filter(d => d.networkLevel === 2))
+const l3Rows = computed(() => (downlinesWithLevels.value || []).filter(d => d.networkLevel === 3))
 
 // Helper: 将根节点移动到窗口顶部居中位置
 const translateRootToTopCenter = () => {
@@ -223,6 +383,106 @@ const getLevelBadgeColor = (level) => {
     default: return 'bg-gray-100 text-gray-800'
   }
 }
+
+// Display title from backend level
+const getDisplayUserLevel = (member) => {
+  const lvl = (member?.level || '').toString().toUpperCase()
+  switch (lvl) {
+    case 'CUSTOMER': return 'Customer'
+    case 'CHIEF': return 'Chief'
+    case 'MAYOR': return 'Mayor'
+    case 'GOVERNOR': return 'Governor'
+    case 'MINISTER': return 'Minister'
+    case 'PRESIDENT': return 'President'
+    default: return 'Customer'
+  }
+}
+
+// Status badge class mapping
+const getStatusBadgeClass = (status) => {
+  const s = (status || '').toString().toLowerCase()
+  switch (s) {
+    case 'active': return 'bg-green-100 text-green-800'
+    case 'inactive': return 'bg-red-100 text-red-800'
+    case 'suspended': return 'bg-yellow-100 text-yellow-800'
+    default: return 'bg-gray-100 text-gray-800'
+  }
+}
+
+// Date formatter
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+  try { return new Date(dateString).toLocaleDateString() } catch { return 'N/A' }
+}
+
+// 排名（职级）：Customer, Chief, Mayor, Governor, Minister, President
+const formatRanking = (rank) => {
+  const r = (rank || '').toString().toUpperCase()
+  return r || '—'
+}
+const getRankingBadgeClass = (rank) => {
+  const r = (rank || '').toString().toUpperCase()
+  switch (r) {
+    case 'CUSTOMER': return 'bg-gray-100 text-gray-800'
+    case 'CHIEF': return 'bg-blue-100 text-blue-800'
+    case 'MAYOR': return 'bg-indigo-100 text-indigo-800'
+    case 'GOVERNOR': return 'bg-purple-100 text-purple-800'
+    case 'MINISTER': return 'bg-pink-100 text-pink-800'
+    case 'PRESIDENT': return 'bg-yellow-100 text-yellow-800'
+    default: return 'bg-gray-100 text-gray-800'
+  }
+}
+
+// 格式化网络层级：显示为 L1/L2/L3
+const formatNetworkLevel = (n) => {
+  if (n === null || n === undefined) return '—'
+  return `L${n}`
+}
+
+// 计算下线的网络层级（相对于当前 selectedUser）
+const downlinesWithLevels = computed(() => {
+  const list = Array.isArray(props.downlines) ? props.downlines.map(m => ({ ...m })) : []
+  const rootCode = (props.selectedUser && props.selectedUser.referralCode) ? props.selectedUser.referralCode : ''
+  if (!list.length || !rootCode) return list
+  const codeToLevel = new Map()
+  const referralToMembers = new Map()
+  for (let i = 0; i < list.length; i++) {
+    const m = list[i]
+    const code = (m.referralCode || '')
+    if (!referralToMembers.has(code)) referralToMembers.set(code, m)
+  }
+  // Level 1
+  const l1Codes = new Set()
+  for (let i = 0; i < list.length; i++) {
+    const m = list[i]
+    if ((m.referredByCode || '') === rootCode) {
+      codeToLevel.set(m.referralCode || '', 1)
+      l1Codes.add(m.referralCode || '')
+    }
+  }
+  // Level 2
+  const l2Codes = new Set()
+  for (let i = 0; i < list.length; i++) {
+    const m = list[i]
+    if (l1Codes.has(m.referredByCode || '')) {
+      codeToLevel.set(m.referralCode || '', 2)
+      l2Codes.add(m.referralCode || '')
+    }
+  }
+  // Level 3
+  for (let i = 0; i < list.length; i++) {
+    const m = list[i]
+    if (l2Codes.has(m.referredByCode || '')) {
+      codeToLevel.set(m.referralCode || '', 3)
+    }
+  }
+  for (let i = 0; i < list.length; i++) {
+    const m = list[i]
+    const lvl = codeToLevel.get(m.referralCode || '')
+    m.networkLevel = (lvl === undefined ? null : lvl)
+  }
+  return list
+})
 
 const getNodeLevel = (data) => {
   // Root node uses numeric user id
@@ -296,6 +556,8 @@ const refreshDownlineCountsForTree = async () => {
     const resp = await getDownlineCountBatch(ids)
     if (resp && resp.success) {
       downlineCounts.value = resp.data || {}
+      const rootId = Number(currentTreeData.value && currentTreeData.value.userId != null ? currentTreeData.value.userId : (props.selectedUser && props.selectedUser.id))
+      rootDownlineCount.value = (rootId != null && downlineCounts.value[rootId] != null) ? downlineCounts.value[rootId] : 0
       applyCountsToGraph()
     }
   } catch (e) {
@@ -899,6 +1161,31 @@ const onContextEditMember = () => {
   })
 }
 
+// Context menu: copy referral code action
+const onContextCopyReferral = async () => {
+  const menu = contextMenu.value
+  if (menu) menu.classList.add('hidden')
+  const code = lastContextNode && lastContextNode.data ? (lastContextNode.data.referralCode || '') : ''
+  if (!code) return
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(code)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = code
+      ta.style.position = 'fixed'
+      ta.style.left = '-9999px'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+  } catch (e) {
+    console.error('Copy referral code failed', e)
+  }
+}
+
 // Expose method to append a newly created downline under a parent by referral code
 const appendDownline = ({ parentReferralCode, newDownline }) => {
   try {
@@ -1025,7 +1312,57 @@ const reparentMember = async ({ id, newReferredByCode }) => {
       return null
     }
     const hit = findWithParent(currentTreeData.value, null)
-    if (!hit) return
+    if (!hit) {
+      // Fallback: if the edited node isn't in current tree (not loaded/visible), reload network and rebuild
+      try {
+        const resp = await getUserNetwork(currentTreeData.value.userId)
+        if (resp && resp.success) {
+          const root = {
+            name: currentTreeData.value.name,
+            value: currentTreeData.value.value,
+            email: currentTreeData.value.email,
+            referralCode: currentTreeData.value.referralCode,
+            userId: currentTreeData.value.userId,
+            collapsed: false,
+            children: []
+          }
+          const dl = Array.isArray(resp.data?.downlines) ? resp.data.downlines : []
+          const makeNode = (m, tag) => ({
+            name: m.name,
+            value: `${tag}_${m.id}`,
+            email: m.email || '',
+            referralCode: m.referralCode || '',
+            userId: m.id,
+            collapsed: true,
+            children: []
+          })
+          const l1 = dl.filter(m => m.referredByCode === (root.referralCode || ''))
+          l1.forEach(m1 => {
+            const n1 = makeNode(m1, 'l1')
+            const l2 = dl.filter(m => m.referredByCode === m1.referralCode)
+            l2.forEach(m2 => {
+              const n2 = makeNode(m2, 'l2')
+              const l3 = dl.filter(m => m.referredByCode === m2.referralCode)
+              l3.forEach(m3 => n2.children.push(makeNode(m3, 'l3')))
+              n1.children.push(n2)
+            })
+            root.children.push(n1)
+          })
+          currentTreeData.value = root
+          const newData = toG6Tree(currentTreeData.value)
+          const handler = () => {
+            translateRootToTopCenter()
+            graph.off('afterlayout', handler)
+          }
+          graph.on('afterlayout', handler)
+          graph.changeData(newData)
+          setTimeout(() => { refreshDownlineCountsForTree() }, 0)
+        }
+      } catch (e) {
+        console.error('reparentMember reload fallback failed', e)
+      }
+      return
+    }
     const { node: targetNode, parent: oldParent } = hit
     // Remove from old parent
     if (oldParent && oldParent.children) {
