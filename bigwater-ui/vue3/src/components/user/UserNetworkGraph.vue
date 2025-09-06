@@ -937,7 +937,126 @@ const updateMember = ({ id, email, firstName, lastName, referralCode }) => {
   }
 }
 
-defineExpose({ appendDownline, updateMember })
+// Reparent a member to a new upline by referredByCode
+const reparentMember = async ({ id, newReferredByCode }) => {
+  try {
+    if (!currentTreeData.value || !id || newReferredByCode === undefined) return
+    const findWithParent = (node, parent) => {
+      if (!node) return null
+      if (String(node.userId) === String(id)) return { node, parent }
+      if (node.children && node.children.length) {
+        for (let i = 0; i < node.children.length; i++) {
+          const res = findWithParent(node.children[i], node)
+          if (res) return res
+        }
+      }
+      return null
+    }
+    const findByReferral = (node, code) => {
+      if (!node) return null
+      if ((node.referralCode || '') === code) return node
+      if (node.children && node.children.length) {
+        for (let i = 0; i < node.children.length; i++) {
+          const found = findByReferral(node.children[i], code)
+          if (found) return found
+        }
+      }
+      return null
+    }
+    const hit = findWithParent(currentTreeData.value, null)
+    if (!hit) return
+    const { node: targetNode, parent: oldParent } = hit
+    // Remove from old parent
+    if (oldParent && oldParent.children) {
+      oldParent.children = oldParent.children.filter(c => String(c.userId) !== String(targetNode.userId))
+    } else if (!oldParent) {
+      // If it was root's child, remove from root
+      currentTreeData.value.children = (currentTreeData.value.children || []).filter(c => String(c.userId) !== String(targetNode.userId))
+    }
+    // Update node's referredBy relation locally
+    // Find new parent
+    let newParent = null
+    if (newReferredByCode && newReferredByCode.length > 0) {
+      newParent = findByReferral(currentTreeData.value, newReferredByCode)
+    } else {
+      // fallback to root if no code
+      newParent = currentTreeData.value
+    }
+    if (!newParent) {
+      // Fallback: reload whole network
+      const resp = await getUserNetwork(currentTreeData.value.userId)
+      if (resp && resp.success) {
+        // rebuild source tree from backend downlines with our builder
+        const root = {
+          name: currentTreeData.value.name,
+          value: currentTreeData.value.value,
+          email: currentTreeData.value.email,
+          referralCode: currentTreeData.value.referralCode,
+          userId: currentTreeData.value.userId,
+          collapsed: false,
+          children: []
+        }
+        const dl = Array.isArray(resp.data?.downlines) ? resp.data.downlines : []
+        const makeNode = (m, tag) => ({
+          name: m.name,
+          value: `${tag}_${m.id}`,
+          email: m.email || '',
+          referralCode: m.referralCode || '',
+          userId: m.id,
+          collapsed: true,
+          children: []
+        })
+        const l1 = dl.filter(m => m.referredByCode === (root.referralCode || ''))
+        l1.forEach(m1 => {
+          const n1 = makeNode(m1, 'l1')
+          const l2 = dl.filter(m => m.referredByCode === m1.referralCode)
+          l2.forEach(m2 => {
+            const n2 = makeNode(m2, 'l2')
+            const l3 = dl.filter(m => m.referredByCode === m2.referralCode)
+            l3.forEach(m3 => n2.children.push(makeNode(m3, 'l3')))
+            n1.children.push(n2)
+          })
+          root.children.push(n1)
+        })
+        currentTreeData.value = root
+      }
+    } else {
+      // attach under new parent
+      if (!newParent.children) newParent.children = []
+      // Avoid duplicate under new parent
+      newParent.children = newParent.children.filter(c => String(c.userId) !== String(targetNode.userId))
+      newParent.children.push(targetNode)
+      newParent.collapsed = false
+    }
+    // Ensure new path expanded
+    const ensureAncestorsExpanded = (root, targetVal) => {
+      if (!root) return false
+      if (String(root.value) === String(targetVal)) return true
+      if (root.children) {
+        for (let i = 0; i < root.children.length; i++) {
+          if (ensureAncestorsExpanded(root.children[i], targetVal)) {
+            root.collapsed = false
+            return true
+          }
+        }
+      }
+      return false
+    }
+    ensureAncestorsExpanded(currentTreeData.value, targetNode.value)
+    // Redraw
+    const newData = toG6Tree(currentTreeData.value)
+    const handler = () => {
+      translateRootToLeftMiddle()
+      graph.off('afterlayout', handler)
+    }
+    graph.on('afterlayout', handler)
+    graph.changeData(newData)
+  } catch (e) {
+    console.error('reparentMember failed', e)
+  }
+}
+
+defineExpose({ appendDownline, updateMember, reparentMember })
 </script>
 
 <style scoped>

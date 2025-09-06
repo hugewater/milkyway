@@ -1292,7 +1292,23 @@ const saveEditMember = async () => {
             referralCode: members.value[memberIndex]?.referralCode || undefined
           })
         }
-      } catch (e) { console.warn('updateMember on graph failed', e) }
+        // 若上级推荐码发生变化，进行重挂
+        const newRefBy = userData.referredByCode
+        const oldRefBy = members.value[memberIndex]?.referredByCode
+        if (newRefBy !== undefined && newRefBy !== oldRefBy) {
+          if (userGraphRef.value && typeof userGraphRef.value.reparentMember === 'function') {
+            userGraphRef.value.reparentMember({
+              id: response.data?.id || members.value[memberIndex]?.id,
+              newReferredByCode: newRefBy || ''
+            })
+          }
+          // 同步列表中的 referredByCode
+          members.value[memberIndex] = {
+            ...members.value[memberIndex],
+            referredByCode: newRefBy || ''
+          }
+        }
+      } catch (e) { console.warn('graph sync after edit failed', e) }
       
       // Clear message after 3 seconds
       setTimeout(() => {
