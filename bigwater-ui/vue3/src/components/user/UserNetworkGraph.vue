@@ -1,10 +1,29 @@
 <template>
-  <div class="bg-white rounded-lg shadow-xl w-full mx-4 max-h-[90vh] overflow-auto resize max-w-[95vw] md:max-w-6xl" 
-       ref="modalContainer"
-       :style="{ minWidth: '800px', minHeight: '600px' }">
+  <div 
+    class="bg-white rounded-lg shadow-xl w-full overflow-auto resize"
+    :class="[
+      isMaximized 
+        ? 'fixed inset-0 z-50 rounded-none max-w-none max-h-none' 
+        : 'mx-4 max-h-[90vh] max-w-[95vw] md:max-w-6xl'
+    ]"
+    ref="modalContainer"
+    :style="isMaximized ? {} : { minWidth: '800px', minHeight: '600px' }"
+  >
     <!-- Header (no title) -->
     <div class="flex items-center justify-end p-2" ref="headerActions">
       <div class="flex items-center space-x-3">
+        <button
+          @click="toggleMaximize"
+          class="text-gray-400 hover:text-gray-600 transition-colors"
+          :title="isMaximized ? '恢复窗口' : '最大化窗口'"
+        >
+          <svg v-if="!isMaximized" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+          </svg>
+          <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9v-4.5M15 9h4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15v4.5M15 15h4.5m0 0l5.5 5.5"></path>
+          </svg>
+        </button>
         <button
           @click="$emit('close')"
           class="text-gray-400 hover:text-gray-600 transition-colors"
@@ -340,6 +359,8 @@ const contextMenu = ref(null)
 let lastContextNode = null
 // Table row actions state
 const tableAct = ref({ open: false, pos: { top: 0, left: 0 }, row: null })
+// Maximize state
+const isMaximized = ref(false)
 
 const openTableActions = (row, evt) => {
   try {
@@ -366,6 +387,22 @@ const onGlobalClick = (e) => {
   const menuEl = tableMenu.value
   if (menuEl && typeof menuEl.contains === 'function' && menuEl.contains(e.target)) return
   closeTableActions()
+}
+
+// Maximize/restore function
+const toggleMaximize = () => {
+  isMaximized.value = !isMaximized.value
+  // Add slight delay to allow DOM to update before resizing chart
+  nextTick(() => {
+    if (graph && chartContainer.value) {
+      setTimeout(() => {
+        const newWidth = chartContainer.value.clientWidth
+        const newHeight = chartHeight.value
+        graph.changeSize(newWidth, newHeight)
+        graph.fitView()
+      }, 100)
+    }
+  })
 }
 onMounted(() => { window.addEventListener('click', onGlobalClick, true) })
 onUnmounted(() => { window.removeEventListener('click', onGlobalClick, true) })
@@ -1571,6 +1608,21 @@ defineExpose({ appendDownline, updateMember, reparentMember })
   background-size: 8px 8px;
   border: 1px solid #94a3b8;
   border-radius: 2px;
+}
+
+/* Disable resize when maximized */
+.fixed.inset-0 {
+  resize: none !important;
+}
+
+/* Smooth transitions for maximize/restore */
+.bg-white {
+  transition: all 0.3s ease;
+}
+
+/* Ensure full height when maximized */
+.fixed.inset-0 .p-3 {
+  height: calc(100vh - 40px); /* Account for header */
 }
 
 /* Smooth transitions for chart container */

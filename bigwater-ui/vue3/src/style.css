@@ -9,10 +9,13 @@
   --forest-green: #228b22;
   --mint-green: #98fb98;
   --wave-gradient: linear-gradient(135deg, #0077be 0%, #40e0d0 50%, #228b22 100%);
+  /* Font CSS variables inspired by provided theme */
+  --font-geist-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Noto Sans", "Helvetica Neue", "Ubuntu", "Cantarell", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+  --font-geist-mono: "IBM Plex Mono", Consolas, SFMono-Regular, Menlo, Monaco, "Liberation Mono", "Courier New", monospace;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family: var(--font-geist-sans);
   margin: 0;
   background: linear-gradient(135deg, #e3f2fd 0%, #e8f5e8 100%);
   min-height: 100vh;
@@ -20,6 +23,10 @@ body {
 
 .ocean-gradient {
   background: var(--wave-gradient);
+}
+
+.ocean-blue {
+  background-color: var(--ocean-blue);
 }
 
 .ocean-blue {
@@ -67,15 +74,33 @@ body {
 }
 
 .btn-primary {
-  background: var(--wave-gradient);
-  border: none;
-  color: white;
-  transition: all 0.3s ease;
+  background-color: var(--ocean-blue);
+  border: 1px solid transparent;
+  color: #fff;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(0, 119, 190, 0.2);
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0, 119, 190, 0.3);
+  background-color: var(--deep-ocean);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 61, 92, 0.35);
+}
+
+.btn-primary:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 119, 190, 0.25);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled,
+.btn-primary[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .wave-pattern {

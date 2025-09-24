@@ -1,0 +1,11 @@
+# Create migration config file
+LOAD DATABASE
+     FROM mysql://root:123456@localhost:3306/bwdb
+     INTO postgresql://aspens_admin:123456@localhost:5432/ac1413
+
+WITH include drop, create tables, create indexes, reset sequences
+
+SET work_mem to '16MB', maintenance_work_mem to '512 MB'
+
+CAST type datetime to timestamptz drop default drop not null using zero-dates-to-null,
+     type date drop not null drop default using zero-dates-to-null;

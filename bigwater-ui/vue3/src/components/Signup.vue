@@ -121,27 +121,7 @@
           </div>
 
           <div class="bg-blue-50 p-4 rounded-lg">
-            <h4 class="font-semibold text-deep-ocean mb-2">Subscription Options:</h4>
-            <div class="space-y-2">
-              <label class="flex items-center">
-                <input
-                  v-model="signupForm.subscriptionType"
-                  type="radio"
-                  value="standard"
-                  class="mr-2"
-                />
-                <span class="text-sm">Standard - $30 USDT/week (10 number sets)</span>
-              </label>
-              <label class="flex items-center">
-                <input
-                  v-model="signupForm.subscriptionType"
-                  type="radio"
-                  value="double"
-                  class="mr-2"
-                />
-                <span class="text-sm">Double Win - $60 USDT/week (20 number sets)</span>
-              </label>
-            </div>
+           
           </div>
 
           <div class="flex items-center">
@@ -175,6 +155,9 @@
             </p>
           </div>
         </form>
+        <div class="mt-6">
+          <button @click="$router.back()" type="button" class="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+        </div>
       </div>
     </div>
   </div>

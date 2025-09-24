@@ -56,7 +56,7 @@
             <textarea v-model="draft" rows="1" @keydown.enter.exact.prevent="send"
                       placeholder="Message..."
                       class="flex-1 border rounded-xl px-4 py-3 text-sm resize-y min-h-[48px] max-h-48"></textarea>
-            <button @click="send" class="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Send</button>
+            <button @click="send" class="btn-primary px-4 py-3 rounded-xl">Send</button>
           </div>
         </div>
       </div>

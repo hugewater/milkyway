@@ -1,17 +1,17 @@
 -- Create table for AI chats
 CREATE TABLE IF NOT EXISTS ai_chats (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  agent_id BIGINT NOT NULL,
-  user_id BIGINT NULL,
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  agent_id BIGINT NOT NULL REFERENCES ai_agents(id) ON DELETE CASCADE,
+  user_id BIGINT NULL REFERENCES users(id) ON DELETE SET NULL,
   title VARCHAR(200) NOT NULL,
   last_message TEXT,
-  status ENUM('ACTIVE','ARCHIVED') NOT NULL DEFAULT 'ACTIVE',
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','ARCHIVED')),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_ai_chats_agent FOREIGN KEY (agent_id) REFERENCES ai_agents(id) ON DELETE CASCADE,
-  INDEX idx_ai_chats_agent (agent_id),
-  INDEX idx_ai_chats_status (status),
-  INDEX idx_ai_chats_user (user_id)
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_ai_chats_agent ON ai_chats (agent_id);
+CREATE INDEX IF NOT EXISTS idx_ai_chats_status ON ai_chats (status);
+CREATE INDEX IF NOT EXISTS idx_ai_chats_user ON ai_chats (user_id);
 
 

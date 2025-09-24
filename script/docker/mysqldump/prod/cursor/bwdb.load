@@ -1,0 +1,16 @@
+LOAD DATABASE
+     FROM mysql://root:123456@localhost:3306/bwdb
+     INTO postgresql://ac1413u:123456@localhost:5432/ac1413?currentSchema=stage
+
+ WITH include drop, create tables, create indexes, reset sequences,
+      workers = 8, concurrency = 4, multiple readers per table
+
+ CAST type datetime to timestamptz using zero-dates-to-null,
+      type date to date using zero-dates-to-null,
+      type tinyint to boolean drop typemod,
+      type bit to boolean,
+      type json to jsonb,
+      type decimal to numeric;
+
+ BEFORE LOAD DO
+   $$ create schema if not exists stage; $$;

@@ -1,3 +1,4 @@
+version: "3"
 name: bw-system
 
 services:
@@ -9,7 +10,7 @@ services:
     networks:
       - bw-nw
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-bwdb}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}

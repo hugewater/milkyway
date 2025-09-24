@@ -7,7 +7,6 @@
             <h2 class="text-3xl font-bold text-ocean mb-2">BigWater</h2>
             <p class="text-sm text-forest-green">Digital Weekly Journal</p>
           </router-link>
-          <h3 class="mt-6 text-2xl font-bold text-deep-ocean">Sign in to your account</h3>
         </div>
 
         <form @submit.prevent="handleLogin" class="mt-8 space-y-6">
@@ -85,13 +84,8 @@
           </div>
         </form>
 
-        <!-- Admin Login Link -->
-        <div class="mt-6 pt-6 border-t border-gray-200">
-          <div class="text-center">
-            <router-link to="/admin" class="text-sm text-forest-green hover:text-ocean font-medium">
-              Admin Login
-            </router-link>
-          </div>
+        <div class="mt-6">
+          <button @click="$router.back()" type="button" class="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
         </div>
       </div>
     </div>

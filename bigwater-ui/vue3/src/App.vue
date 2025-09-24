@@ -18,7 +18,7 @@
 
 html, body {
   height: 100%;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
 }
 
 #app {

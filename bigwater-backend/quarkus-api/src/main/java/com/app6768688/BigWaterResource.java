@@ -2267,6 +2267,35 @@ public class BigWaterResource {
     }
 
     @GET
+    @Path("/generate-hash")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response generateHash(@QueryParam("password") String password) {
+        try {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Generate hash");
+            
+            if (password == null || password.isEmpty()) {
+                password = "123456";
+            }
+            
+            String hash = passwordUtil.hashPassword(password);
+            response.put("password", password);
+            response.put("hash", hash);
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(response)
+                    .build();
+        }
+    }
+
+    @GET
     @Path("/view-users")
     @Produces(MediaType.APPLICATION_JSON)
     public Response viewUsers() {

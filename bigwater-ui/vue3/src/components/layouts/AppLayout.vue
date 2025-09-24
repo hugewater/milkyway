@@ -38,7 +38,7 @@
           <div class="text-xs uppercase tracking-wider text-white/60 mb-3">
             {{ isAdmin.value ? 'Management' : 'Dashboard' }}
           </div>
-          <!-- Flat items -->SWEEPSTAKES
+          <!-- Flat items -->Admin 
           <router-link
             v-for="item in flatMenuItems"
             :key="item.path"

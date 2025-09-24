@@ -101,7 +101,7 @@
         </div>
         <div class="flex items-end">
           <button @click="createCompanyWallet"
-            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">Create Wallet
+            class="btn-primary px-4 py-2 rounded-lg">Create Wallet
           </button>
         </div>
       </div>
@@ -124,7 +124,7 @@
         </div>
         <div class="flex items-end">
           <button @click="addBalance"
-            class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">Add Balance
+            class="btn-primary px-4 py-2 rounded-lg">Add Balance
           </button>
         </div>
       </div>
@@ -151,7 +151,7 @@
         </div>
         <div class="flex items-end">
           <button @click="submitTransfer"
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">Transfer
+            class="btn-primary px-4 py-2 rounded-lg">Transfer
           </button>
         </div>
       </div>
@@ -274,7 +274,7 @@
           </div>
           <div class="flex justify-end space-x-3 pt-2">
             <button type="button" @click="showEditModal = false" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
+            <button type="submit" class="btn-primary px-4 py-2 rounded-lg">Save</button>
           </div>
           <p v-if="editErrorMsg" class="text-sm text-red-600">{{ editErrorMsg }}</p>
         </form>
@@ -363,7 +363,7 @@
             </button>
             <button 
               type="submit" 
-              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              class="btn-primary px-4 py-2 rounded-lg"
             >
               Record Payment
             </button>
