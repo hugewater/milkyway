@@ -506,13 +506,14 @@ const getLevelBadgeColor = (level) => {
 const getDisplayUserLevel = (member) => {
   const lvl = (member?.level || '').toString().toUpperCase()
   switch (lvl) {
-    case 'CUSTOMER': return 'Customer'
-    case 'CHIEF': return 'Chief'
-    case 'MAYOR': return 'Mayor'
-    case 'GOVERNOR': return 'Governor'
-    case 'MINISTER': return 'Minister'
+    case 'FAN': return 'Fan'
+    case 'SUBSCRIBER': return 'Subscriber'
+    case 'READER': return 'Reader'
+    case 'PROMOTER': return 'Promoter'
+    case 'LEADER': return 'Leader'
+    case 'INFLUENCER': return 'Influencer'
     case 'PRESIDENT': return 'President'
-    default: return 'Customer'
+    default: return 'Fan'
   }
 }
 
@@ -533,7 +534,7 @@ const formatDate = (dateString) => {
   try { return new Date(dateString).toLocaleDateString() } catch { return 'N/A' }
 }
 
-// 排名（职级）：Customer, Chief, Mayor, Governor, Minister, President
+// 排名（职级）：Fan, Subscriber, Reader, Promoter, Leader, Influencer, President
 const formatRanking = (rank) => {
   const r = (rank || '').toString().toUpperCase()
   return r || '—'

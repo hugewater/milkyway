@@ -473,11 +473,12 @@
                   v-model="newDownlineForm.level"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-ocean focus:border-ocean"
                 >
-                  <option value="CUSTOMER">Customer</option>
-                  <option value="CHIEF">Chief</option>
-                  <option value="MAYOR">Mayor</option>
-                  <option value="GOVERNOR">Governor</option>
-                  <option value="MINISTER">Minister</option>
+                  <option value="FAN">Fan</option>
+                  <option value="SUBSCRIBER">Subscriber</option>
+                  <option value="READER">Reader</option>
+                  <option value="PROMOTER">Promoter</option>
+                  <option value="LEADER">Leader</option>
+                  <option value="INFLUENCER">Influencer</option>
                   <option value="PRESIDENT">President</option>
                 </select>
               </div>
@@ -576,13 +577,14 @@ const calculateContribution = (user) => {
 const getDisplayUserLevel = (member) => {
   const lvl = (member?.level || '').toString().toUpperCase()
   switch (lvl) {
-    case 'CUSTOMER': return 'Customer'
-    case 'CHIEF': return 'Chief'
-    case 'MAYOR': return 'Mayor'
-    case 'GOVERNOR': return 'Governor'
-    case 'MINISTER': return 'Minister'
+    case 'FAN': return 'Fan'
+    case 'SUBSCRIBER': return 'Subscriber'
+    case 'READER': return 'Reader'
+    case 'PROMOTER': return 'Promoter'
+    case 'LEADER': return 'Leader'
+    case 'INFLUENCER': return 'Influencer'
     case 'PRESIDENT': return 'President'
-    default: return 'Customer'
+    default: return 'Fan'
   }
 }
 
@@ -829,7 +831,7 @@ const currentUserForGraph = computed(() => {
       ? `${currentUser.value.firstName} ${currentUser.value.lastName}`
       : currentUser.value?.email || 'You',
     email: currentUser.value?.email || '',
-    level: currentUser.value?.level || 'Chief',
+    level: currentUser.value?.level || 'Fan',
     referralCode: currentUser.value?.referralCode || ''
   }
   console.log('currentUserForGraph computed:', result)

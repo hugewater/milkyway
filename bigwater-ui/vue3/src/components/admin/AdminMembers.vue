@@ -32,7 +32,7 @@
             </div>
             <div class="ml-4">
               <p class="text-sm text-gray-600">Total Members</p>
-              <p class="text-2xl font-bold text-deep-ocean">{{ members.length }}</p>
+              <p class="text-2xl font-bold text-deep-ocean">{{ stats.totalUsers }}</p>
             </div>
           </div>
         </div>
@@ -59,8 +59,8 @@
               </svg>
             </div>
             <div class="ml-4">
-              <p class="text-sm text-gray-600">Premium Members</p>
-              <p class="text-2xl font-bold text-deep-ocean">{{ premiumMembersCount }}</p>
+              <p class="text-sm text-gray-600">President Members</p>
+              <p class="text-2xl font-bold text-deep-ocean">{{ presidentMembersCount }}</p>
             </div>
           </div>
         </div>
@@ -114,11 +114,12 @@
               class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
             >
               <option value="">All Levels</option>
-              <option value="CUSTOMER">Customer</option>
-              <option value="CHIEF">Chief</option>
-              <option value="MAYOR">Mayor</option>
-              <option value="GOVERNOR">Governor</option>
-              <option value="MINISTER">Minister</option>
+              <option value="FAN">Fan</option>
+              <option value="SUBSCRIBER">Subscriber</option>
+              <option value="READER">Reader</option>
+              <option value="PROMOTER">Promoter</option>
+              <option value="LEADER">Leader</option>
+              <option value="INFLUENCER">Influencer</option>
               <option value="PRESIDENT">President</option>
             </select>
             <select
@@ -220,6 +221,85 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- Pagination Controls -->
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <!-- Pagination Info -->
+            <div class="text-sm text-gray-700">
+              Showing {{ Math.min((currentPage() - 1) * limit + 1, total) }} to {{ Math.min(currentPage() * limit, total) }} of {{ total }} results
+            </div>
+            
+            <!-- Pagination Controls -->
+            <div class="flex items-center space-x-2">
+              <!-- Previous Button -->
+              <button 
+                @click="goToPage(currentPage() - 1)"
+                :disabled="currentPage() <= 1"
+                :class="[
+                  'px-3 py-2 text-sm font-medium rounded-md',
+                  currentPage() <= 1 
+                    ? 'text-gray-300 cursor-not-allowed' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                ]"
+              >
+                ← Previous
+              </button>
+              
+              <!-- Page Numbers -->
+              <div class="flex items-center space-x-1">
+                <!-- First Page -->
+                <button
+                  v-if="currentPage() > 3"
+                  @click="goToPage(1)"
+                  class="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md"
+                >
+                  1
+                </button>
+                <span v-if="currentPage() > 4" class="px-2 text-gray-500">...</span>
+                
+                <!-- Page Range -->
+                <button
+                  v-for="page in getPageRange()"
+                  :key="page"
+                  @click="goToPage(page)"
+                  :class="[
+                    'px-3 py-2 text-sm font-medium rounded-md',
+                    page === currentPage()
+                      ? 'bg-ocean text-white'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  ]"
+                >
+                  {{ page }}
+                </button>
+                
+                <!-- Last Page -->
+                <span v-if="currentPage() < totalPages() - 3" class="px-2 text-gray-500">...</span>
+                <button
+                  v-if="currentPage() < totalPages() - 2"
+                  @click="goToPage(totalPages())"
+                  class="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md"
+                >
+                  {{ totalPages() }}
+                </button>
+              </div>
+              
+              <!-- Next Button -->
+              <button 
+                @click="goToPage(currentPage() + 1)"
+                :disabled="currentPage() >= totalPages()"
+                :class="[
+                  'px-3 py-2 text-sm font-medium rounded-md',
+                  currentPage() >= totalPages() 
+                    ? 'text-gray-300 cursor-not-allowed' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                ]"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -289,11 +369,12 @@
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
               >
-                <option value="CUSTOMER">Customer</option>
-                <option value="CHIEF">Chief</option>
-                <option value="MAYOR">Mayor</option>
-                <option value="GOVERNOR">Governor</option>
-                <option value="MINISTER">Minister</option>
+                <option value="FAN">Fan</option>
+                <option value="SUBSCRIBER">Subscriber</option>
+                <option value="READER">Reader</option>
+                <option value="PROMOTER">Promoter</option>
+                <option value="LEADER">Leader</option>
+                <option value="INFLUENCER">Influencer</option>
                 <option value="PRESIDENT">President</option>
               </select>
             </div>
@@ -383,11 +464,12 @@
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
               >
-                <option value="CUSTOMER">Customer</option>
-                <option value="CHIEF">Chief</option>
-                <option value="MAYOR">Mayor</option>
-                <option value="GOVERNOR">Governor</option>
-                <option value="MINISTER">Minister</option>
+                <option value="FAN">Fan</option>
+                <option value="SUBSCRIBER">Subscriber</option>
+                <option value="READER">Reader</option>
+                <option value="PROMOTER">Promoter</option>
+                <option value="LEADER">Leader</option>
+                <option value="INFLUENCER">Influencer</option>
                 <option value="PRESIDENT">President</option>
               </select>
             </div>
@@ -454,9 +536,9 @@
               <thead class="bg-gray-50">
                 <tr>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Referral Code</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Address</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">TRON Address</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">POLYGON Address</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -466,8 +548,18 @@
                 <tr v-for="w in wallets" :key="w.id">
                   <td class="px-4 py-2 text-sm text-gray-900">{{ w.id }}</td>
                   <td class="px-4 py-2 text-sm text-gray-900">{{ w.walletName }}</td>
-                  <td class="px-4 py-2 text-sm text-gray-900">{{ w.walletAddress }}</td>
-                  <td class="px-4 py-2 text-sm text-gray-900">{{ w.walletType }}</td>
+                  <td class="px-4 py-2 text-sm text-gray-900">
+                    <span v-if="w.tronAddress" class="text-blue-600" :title="w.tronAddress">
+                      {{ w.tronAddress.length > 20 ? w.tronAddress.substring(0, 20) + '...' : w.tronAddress }}
+                    </span>
+                    <span v-else class="text-gray-400">Not set</span>
+                  </td>
+                  <td class="px-4 py-2 text-sm text-gray-900">
+                    <span v-if="w.polygonAddress" class="text-purple-600" :title="w.polygonAddress">
+                      {{ w.polygonAddress.length > 20 ? w.polygonAddress.substring(0, 20) + '...' : w.polygonAddress }}
+                    </span>
+                    <span v-else class="text-gray-400">Not set</span>
+                  </td>
                   <td class="px-4 py-2 text-sm text-gray-900">{{ w.balance }}</td>
                   <td class="px-4 py-2 text-sm text-gray-900">
                     <span :class="w.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" class="px-2 py-1 text-xs rounded-full">
@@ -629,9 +721,85 @@
       </div>
     </div>
 
+    <!-- Edit Wallet Modal -->
+    <div v-if="showEditWalletModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+        <h3 class="text-lg font-bold text-deep-ocean mb-4">Edit Wallet: {{ editingWallet?.walletName }}</h3>
+        
+        <form @submit.prevent="updateWallet">
+          <div class="space-y-4">
+            <div>
+              <label for="editWalletName" class="block text-sm font-medium text-gray-700 mb-2">
+                Wallet Name
+              </label>
+              <input
+                id="editWalletName"
+                v-model="editWalletForm.walletName"
+                type="text"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
+                placeholder="Enter wallet name"
+              />
+            </div>
+
+            <div class="space-y-4">
+              <div>
+                <label for="editTronAddress" class="block text-sm font-medium text-gray-700 mb-2">
+                  TRON Address (TRC20)
+                </label>
+                <input
+                  id="editTronAddress"
+                  v-model="editWalletForm.tronAddress"
+                  type="text"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent font-mono text-sm"
+                  placeholder="0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+                />
+              </div>
+
+              <div>
+                <label for="editPolygonAddress" class="block text-sm font-medium text-gray-700 mb-2">
+                  POLYGON Address
+                </label>
+                <input
+                  id="editPolygonAddress"
+                  v-model="editWalletForm.polygonAddress"
+                  type="text"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent font-mono text-sm"
+                  placeholder="0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+                />
+              </div>
+            </div>
+
+            <div class="text-sm text-gray-500">
+              <p>• At least one address (TRON or POLYGON) must be provided</p>
+              <p>• Leave an address field empty to remove that address</p>
+            </div>
+          </div>
+
+          <div class="flex justify-end space-x-3 mt-6">
+            <button
+              type="button"
+              @click="showEditWalletModal = false"
+              class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              :disabled="isUpdatingWallet || (!editWalletForm.tronAddress && !editWalletForm.polygonAddress)"
+              class="btn-primary px-4 py-2 rounded-lg disabled:opacity-50"
+            >
+              <span v-if="isUpdatingWallet">Updating...</span>
+              <span v-else>Update Wallet</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Add Wallet Modal -->
     <div v-if="showAddWalletModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+      <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
         <h3 class="text-lg font-bold text-deep-ocean mb-4">Add New Wallet for {{ selectedUser?.name }}</h3>
         
         <form @submit.prevent="addWallet">
@@ -650,34 +818,37 @@
               />
             </div>
 
-            <div>
-              <label for="walletAddress" class="block text-sm font-medium text-gray-700 mb-2">
-                Wallet Address
-              </label>
-              <input
-                id="walletAddress"
-                v-model="newWallet.walletAddress"
-                type="text"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
-                placeholder="Enter USDT wallet address"
-              />
+            <div class="space-y-4">
+              <div>
+                <label for="tronAddress" class="block text-sm font-medium text-gray-700 mb-2">
+                  TRON Address (TRC20)
+                </label>
+                <input
+                  id="tronAddress"
+                  v-model="newWallet.tronAddress"
+                  type="text"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent font-mono text-sm"
+                  placeholder="0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+                />
+              </div>
+
+              <div>
+                <label for="polygonAddress" class="block text-sm font-medium text-gray-700 mb-2">
+                  POLYGON Address
+                </label>
+                <input
+                  id="polygonAddress"
+                  v-model="newWallet.polygonAddress"
+                  type="text"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent font-mono text-sm"
+                  placeholder="0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+                />
+              </div>
             </div>
 
-            <div>
-              <label for="walletType" class="block text-sm font-medium text-gray-700 mb-2">
-                Wallet Type
-              </label>
-              <select
-                id="walletType"
-                v-model="newWallet.walletType"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent"
-              >
-                <option value="COMPANY">Company</option>
-                <option value="MEMBER">Member</option>
-                <option value="TESTING">Testing</option>
-              </select>
+            <div class="text-sm text-gray-500">
+              <p>• At least one address (TRON or POLYGON) is required</p>
+              <p>• You can add both addresses or just one initially</p>
             </div>
           </div>
 
@@ -691,7 +862,7 @@
             </button>
             <button
               type="submit"
-              :disabled="isAddingWallet"
+              :disabled="isAddingWallet || (!newWallet.tronAddress && !newWallet.polygonAddress)"
               class="btn-primary px-4 py-2 rounded-lg disabled:opacity-50"
             >
               <span v-if="isAddingWallet">Adding...</span>
@@ -885,11 +1056,12 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Member Level</label>
               <select v-model="addDownlineForm.level" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent">
-                <option value="CUSTOMER">Customer</option>
-                <option value="CHIEF">Chief</option>
-                <option value="MAYOR">Mayor</option>
-                <option value="GOVERNOR">Governor</option>
-                <option value="MINISTER">Minister</option>
+                <option value="FAN">Fan</option>
+                <option value="SUBSCRIBER">Subscriber</option>
+                <option value="READER">Reader</option>
+                <option value="PROMOTER">Promoter</option>
+                <option value="LEADER">Leader</option>
+                <option value="INFLUENCER">Influencer</option>
                 <option value="PRESIDENT">President</option>
               </select>
             </div>
@@ -908,7 +1080,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getWalletsByUserId, transferBetweenWallets, withdrawFromWallet, getWallets, createWallet, getUserNetwork, updateUser, createUser, getUsersPaged, addDownline, getTransactionsByWalletId, getUserById } from '../../utils/api.js'
+import { getWalletsByUserId, transferBetweenWallets, withdrawFromWallet, getWallets, createWallet, getUserNetwork, updateUser, createUser, getUsersPaged, addDownline, getTransactionsByWalletId, getUserById, getUserStats, createUserWallet, getUserWallet, updateWalletAddresses } from '../../utils/api.js'
 import AppLayout from '../layouts/AppLayout.vue'
 import NetworkGraph from './NetworkGraph.vue'
 import UserNetworkGraph from '../user/UserNetworkGraph.vue'
@@ -926,6 +1098,7 @@ const showWithdrawModal = ref(false)
 const companyWallets = ref([])
 const showTransactionsModal = ref(false)
 const showAddWalletModal = ref(false)
+const showEditWalletModal = ref(false)
 const showViewModal = ref(false)
 const viewingMember = ref(null)
 const showUplineDownlineModal = ref(false)
@@ -933,6 +1106,7 @@ const showUplinesModal = ref(false)
 const showNetworkGraphModal = ref(false)
 const selectedUser = ref(null)
 const selectedWallet = ref(null)
+const editingWallet = ref(null)
 const walletsLoading = ref(false)
 const wallets = ref([])
 const transactions = ref([])
@@ -941,14 +1115,28 @@ const transactionForm = ref({ amount: 0, description: '', fromWalletAddress: '',
 const transactionMsg = ref('')
 const transactionOk = ref(false)
 const isAddingWallet = ref(false)
+const isUpdatingWallet = ref(false)
 const uplineDownlineLoading = ref(false)
 const uplines = ref([])
 const downlines = ref([])
 
 const newWallet = ref({
   walletName: '',
-  walletAddress: '',
-  walletType: 'COMPANY'
+  tronAddress: '',
+  polygonAddress: ''
+})
+
+const editWalletForm = ref({
+  walletName: '',
+  tronAddress: '',
+  polygonAddress: ''
+})
+
+// Actions menu state
+const actions = ref({
+  open: false,
+  member: null,
+  pos: { top: 0, left: 0 }
 })
 
 // filters & pagination
@@ -964,23 +1152,25 @@ let searchTimer = null
 
 const members = ref([])
 const loadingMembers = ref(false)
+const stats = ref({
+  totalUsers: 0,
+  activeUsers: 0,
+  subscribers: 0,
+  presidentUsers: 0
+})
 
 const newMember = ref({
   name: '',
   email: '',
-  level: 'CHIEF',
+  level: 'FAN',
   referredByCode: '',
   password: ''
 })
 
 // Computed properties
-const activeMembersCount = computed(() => 
-  members.value.filter(m => m.status === 'active').length
-)
+const activeMembersCount = computed(() => stats.value.activeUsers)
 
-const premiumMembersCount = computed(() => 
-  members.value.filter(m => ['MAYOR', 'GOVERNOR', 'MINISTER', 'PRESIDENT'].includes(m.level)).length
-)
+const presidentMembersCount = computed(() => stats.value.presidentUsers)
 
 const newMembersThisMonth = computed(() => {
   const currentMonth = new Date().getMonth()
@@ -997,6 +1187,28 @@ const filteredMembers = computed(() => members.value)
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString()
 }
+const loadStats = async () => {
+  try {
+    // Load general stats
+    const resp = await getUserStats()
+    if (resp.data) {
+      stats.value.totalUsers = resp.data.totalUsers || 0
+      stats.value.activeUsers = resp.data.activeUsers || 0
+      stats.value.subscribers = resp.data.subscribers || 0
+    }
+    
+    // Load President count specifically
+    const presidentResp = await getUsersPaged({
+      offset: 0,
+      limit: 1,
+      level: 'PRESIDENT'
+    })
+    stats.value.presidentUsers = presidentResp.total || 0
+  } catch (e) {
+    console.error('Failed to load user stats:', e)
+  }
+}
+
 const loadMembers = async () => {
   loadingMembers.value = true
   try {
@@ -1017,7 +1229,7 @@ const loadMembers = async () => {
       email: u.email,
       referralCode: u.referralCode || '',
       referredByCode: u.referredByCode || '',
-      level: u.level || 'CHIEF',
+      level: u.level || 'FAN',
       status: (u.status || 'ACTIVE').toLowerCase(),
       joinDate: u.joinDate || u.createdAt || new Date().toISOString(),
       balance: u.balance || 0
@@ -1059,7 +1271,23 @@ const goToPage = (page) => {
   loadMembers()
 }
 
+const getPageRange = () => {
+  const current = currentPage()
+  const total = totalPages()
+  const range = []
+  
+  const start = Math.max(1, current - 2)
+  const end = Math.min(total, current + 2)
+  
+  for (let i = start; i <= end; i++) {
+    range.push(i)
+  }
+  
+  return range
+}
+
 onMounted(() => {
+  loadStats()
   loadMembers()
 })
 
@@ -1354,8 +1582,7 @@ const toggleMemberStatus = async (member) => {
   }
 }
 
-// Actions dropdown state
-const actions = ref({ open: false, member: null, pos: { top: 0, left: 0 } })
+// Actions dropdown state - already declared above at line 1136
 let actionsMenuEl = null
 let actionsTriggerEl = null
 
@@ -1413,13 +1640,35 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onGlobalResize, true)
 })
 
-// Action handlers
-const actionEdit = () => { if (actions.value.member) editMember(actions.value.member); closeActions() }
-const actionView = () => { if (actions.value.member) viewMember(actions.value.member); closeActions() }
-const actionWallets = () => { if (actions.value.member) openWallets(actions.value.member); closeActions() }
-const actionUplines = () => { if (actions.value.member) showUplines(actions.value.member); closeActions() }
-const actionGraph = () => { if (actions.value.member) showNetworkGraph(actions.value.member); closeActions() }
-const actionToggle = () => { if (actions.value.member) toggleMemberStatus(actions.value.member); closeActions() }
+// Action handlers - moved to end of file to avoid duplication
+
+// Helper function to load user wallets using new API
+const loadUserWallets = async (userId) => {
+  try {
+    // Get user wallet using new API and display in legacy format
+    const response = await getUserWallet(userId)
+    if (response && response.success) {
+      // Convert new wallet format to legacy format for display
+      const newWallet = response.data
+      wallets.value = [{
+        id: newWallet.id,
+        walletName: newWallet.walletName,
+        walletAddress: newWallet.tronAddress || newWallet.polygonAddress || 'No address',
+        walletType: 'PRIMARY',
+        balance: newWallet.balance,
+        isActive: newWallet.isActive,
+        // Add additional info for display
+        tronAddress: newWallet.tronAddress,
+        polygonAddress: newWallet.polygonAddress
+      }]
+    } else {
+      wallets.value = []
+    }
+  } catch (error) {
+    console.error('Failed to load user wallets:', error)
+    wallets.value = []
+  }
+}
 
 // Wallet management functions
 const openWallets = async (member) => {
@@ -1430,18 +1679,9 @@ const openWallets = async (member) => {
   
   try {
     console.log('Fetching wallets for user ID:', member.id)
-    const response = await getWalletsByUserId(member.id)
-    console.log('API response:', response)
-    
-    if (response && response.success) {
-      wallets.value = response.data || []
-      console.log('Wallets loaded:', wallets.value)
-      showWalletsModal.value = true
-    } else {
-      console.error('API returned success: false')
-      transactionMsg.value = response?.error || 'Failed to load wallets.'
-      transactionOk.value = false
-    }
+    await loadUserWallets(member.id)
+    console.log('Wallets loaded:', wallets.value)
+    showWalletsModal.value = true
   } catch (error) {
     console.error('Error fetching wallets:', error)
     transactionMsg.value = `Failed to load wallets: ${error.message || 'Unknown error'}`
@@ -1454,36 +1694,38 @@ const openWallets = async (member) => {
 const openAddWalletModal = () => {
   newWallet.value = {
     walletName: '',
-    walletAddress: '',
-    walletType: 'COMPANY'
+    tronAddress: '',
+    polygonAddress: ''
   }
   showAddWalletModal.value = true
 }
 
 const addWallet = async () => {
-  if (!newWallet.value.walletName || !newWallet.value.walletAddress || !newWallet.value.walletType) {
+  // Check if at least one address is provided
+  if (!newWallet.value.walletName || (!newWallet.value.tronAddress && !newWallet.value.polygonAddress)) {
+    transactionMsg.value = 'Wallet name and at least one address (TRON or POLYGON) are required.'
+    transactionOk.value = false
     return
   }
 
   isAddingWallet.value = true
   try {
     const walletData = {
-      userId: selectedUser.value.id.toString(),
       walletName: newWallet.value.walletName,
-      walletAddress: newWallet.value.walletAddress,
-      walletType: newWallet.value.walletType
+      tronAddress: newWallet.value.tronAddress || null,
+      polygonAddress: newWallet.value.polygonAddress || null
     }
 
-    const response = await createWallet(walletData)
+    const response = await createUserWallet(selectedUser.value.id, walletData)
     if (response && response.success) {
-      // Add new wallet to the list
-      wallets.value.push(response.data)
+      // Refresh the wallet list by reloading user wallets
+      await loadUserWallets(selectedUser.value.id)
       
       // Reset form
       newWallet.value = {
         walletName: '',
-        walletAddress: '',
-        walletType: 'MAIN'
+        tronAddress: '',
+        polygonAddress: ''
       }
       
       // Close modal
@@ -1505,9 +1747,54 @@ const addWallet = async () => {
   }
 }
 
+// loadUserWallets function already defined above
+
 const editWallet = (wallet) => {
-  // Implementation for editing wallet
-  console.log('Edit wallet:', wallet)
+  editingWallet.value = wallet
+  editWalletForm.value = {
+    walletName: wallet.walletName || '',
+    tronAddress: wallet.tronAddress || '',
+    polygonAddress: wallet.polygonAddress || ''
+  }
+  showEditWalletModal.value = true
+}
+
+const updateWallet = async () => {
+  if (!editWalletForm.value.walletName || (!editWalletForm.value.tronAddress && !editWalletForm.value.polygonAddress)) {
+    transactionMsg.value = 'Wallet name and at least one address (TRON or POLYGON) are required.'
+    transactionOk.value = false
+    return
+  }
+
+  isUpdatingWallet.value = true
+  try {
+    const addresses = {
+      tronAddress: editWalletForm.value.tronAddress || null,
+      polygonAddress: editWalletForm.value.polygonAddress || null
+    }
+
+    const response = await updateWalletAddresses(selectedUser.value.id, addresses)
+    if (response && response.success) {
+      // Refresh the wallet list
+      await loadUserWallets(selectedUser.value.id)
+      
+      // Close modal
+      showEditWalletModal.value = false
+      
+      // Show success message
+      transactionMsg.value = 'Wallet updated successfully!'
+      transactionOk.value = true
+    } else {
+      transactionMsg.value = response?.error || 'Failed to update wallet.'
+      transactionOk.value = false
+    }
+  } catch (error) {
+    console.error('Failed to update wallet:', error)
+    transactionMsg.value = `Failed to update wallet: ${error.message || 'Unknown error'}`
+    transactionOk.value = false
+  } finally {
+    isUpdatingWallet.value = false
+  }
 }
 
 const toggleWalletStatusLocal = (wallet) => {
@@ -1919,4 +2206,85 @@ const onGraphEditMember = (payload) => {
     }
   } catch (e) {}
 }
+
+// Actions menu functions (openActions and closeActions already exist above)
+
+const actionEdit = () => {
+  if (!actions.value.member) return
+  const member = actions.value.member
+  editingMember.value = {
+    id: member.id,
+    firstName: member.name.split(' ')[0] || '',
+    lastName: member.name.split(' ').slice(1).join(' ') || '',
+    email: member.email,
+    phone: '',
+    level: member.level,
+    status: member.status,
+    referredByCode: member.referredByCode || '',
+    password: ''
+  }
+  showEditModal.value = true
+  closeActions()
+}
+
+const actionView = () => {
+  if (!actions.value.member) return
+  viewingMember.value = actions.value.member
+  showViewModal.value = true
+  closeActions()
+}
+
+const actionWallets = async () => {
+  if (!actions.value.member) return
+  await openWallets(actions.value.member)
+  closeActions()
+}
+
+const actionUplines = async () => {
+  if (!actions.value.member) return
+  selectedUser.value = actions.value.member
+  await openUplineDownline(actions.value.member.id)
+  closeActions()
+}
+
+const actionGraph = async () => {
+  if (!actions.value.member) return
+  await showNetworkGraph(actions.value.member)
+  closeActions()
+}
+
+const actionToggle = async () => {
+  if (!actions.value.member) return
+  const member = actions.value.member
+  const newStatus = member.status === 'active' ? 'inactive' : 'active'
+  
+  try {
+    const updatedUser = {
+      id: member.id,
+      status: newStatus.toUpperCase()
+    }
+    
+    const response = await updateUser(member.id, updatedUser)
+    if (response && response.success) {
+      // Update local member status
+      const localMember = members.value.find(m => m.id === member.id)
+      if (localMember) {
+        localMember.status = newStatus
+      }
+      transactionMsg.value = `User status updated to ${newStatus}`
+      transactionOk.value = true
+    } else {
+      transactionMsg.value = response?.error || 'Failed to update user status'
+      transactionOk.value = false
+    }
+  } catch (error) {
+    console.error('Failed to update user status:', error)
+    transactionMsg.value = 'Failed to update user status: ' + (error.message || 'Unknown error')
+    transactionOk.value = false
+  }
+  
+  closeActions()
+}
+
+// setActionsMenuEl function already exists above
 </script>

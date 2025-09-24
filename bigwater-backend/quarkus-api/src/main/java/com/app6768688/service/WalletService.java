@@ -1,7 +1,8 @@
 package com.app6768688.service;
 
 import com.app6768688.model.Transaction;
-import com.app6768688.model.UsdtWallet;
+import com.app6768688.model.Wallet;
+import com.app6768688.model.UsdtWallet; // Keep for backward compatibility
 import com.app6768688.repository.WalletRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -20,6 +21,77 @@ public class WalletService {
     @Inject
     TransactionService transactionService;
 
+    // NEW WALLET MODEL METHODS
+    
+    @Transactional
+    public Wallet createUserWallet(Long userId, String walletName) {
+        // Check if user already has a wallet
+        Optional<Wallet> existingWallet = findWalletByUserId(userId);
+        if (existingWallet.isPresent()) {
+            throw new RuntimeException("User already has a wallet");
+        }
+
+        String finalWalletName = walletName != null ? walletName : "Primary Wallet";
+        Wallet wallet = new Wallet(userId, finalWalletName);
+        
+        return walletRepository.createWallet(wallet);
+    }
+    
+    @Transactional
+    public Wallet createUserWallet(Long userId, String walletName, String tronAddress, String polygonAddress) {
+        // Check if user already has a wallet
+        Optional<Wallet> existingWallet = findWalletByUserId(userId);
+        if (existingWallet.isPresent()) {
+            throw new RuntimeException("User already has a wallet");
+        }
+
+        String finalWalletName = walletName != null ? walletName : "Primary Wallet";
+        Wallet wallet = new Wallet(userId, finalWalletName, tronAddress, polygonAddress);
+        
+        return walletRepository.createWallet(wallet);
+    }
+
+    public Optional<Wallet> findWalletByUserId(Long userId) {
+        return walletRepository.findWalletByUserId(userId);
+    }
+
+    public Optional<Wallet> findWalletById(Long walletId) {
+        return walletRepository.findWalletById(walletId);
+    }
+
+    @Transactional
+    public Wallet updateWalletAddresses(Long userId, String tronAddress, String polygonAddress) {
+        Optional<Wallet> walletOpt = findWalletByUserId(userId);
+        if (walletOpt.isEmpty()) {
+            throw new RuntimeException("User wallet not found");
+        }
+        
+        Wallet wallet = walletOpt.get();
+        wallet.setTronAddress(tronAddress);
+        wallet.setPolygonAddress(polygonAddress);
+        
+        return walletRepository.updateWallet(wallet);
+    }
+
+    @Transactional
+    public Wallet updateWalletAddress(Long userId, String network, String address) {
+        Optional<Wallet> walletOpt = findWalletByUserId(userId);
+        if (walletOpt.isEmpty()) {
+            throw new RuntimeException("User wallet not found");
+        }
+        
+        Wallet wallet = walletOpt.get();
+        wallet.setAddressByNetwork(network, address);
+        
+        return walletRepository.updateWallet(wallet);
+    }
+
+    public List<Wallet> getAllWallets() {
+        return walletRepository.findAllWallets();
+    }
+
+    // LEGACY WALLET MODEL METHODS (for backward compatibility)
+    
     @Transactional
     public UsdtWallet createWallet(Long userId, String walletAddress, String walletName, 
                                   UsdtWallet.WalletType walletType) {

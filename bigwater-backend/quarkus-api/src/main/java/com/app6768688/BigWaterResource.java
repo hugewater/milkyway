@@ -3,6 +3,7 @@ package com.app6768688;
 import com.app6768688.model.User;
 import com.app6768688.model.Certificate;
 import com.app6768688.model.UsdtWallet;
+import com.app6768688.model.Wallet;
 import com.app6768688.model.Journal;
 import com.app6768688.model.RandomDrawing;
 import com.app6768688.model.Subscription;
@@ -839,7 +840,7 @@ public class BigWaterResource {
                 } catch (IllegalArgumentException e) {
                     Map<String, Object> response = new HashMap<>();
                     response.put("success", false);
-                    response.put("error", "Invalid level: " + newLevel + ". Valid levels are: CHIEF, MAYOR, GOVERNOR, MINISTER, PRESIDENT");
+                    response.put("error", "Invalid level: " + newLevel + ". Valid levels are: FAN, SUBSCRIBER, READER, PROMOTER, LEADER, INFLUENCER, PRESIDENT");
                     return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
                 }
             } else {
@@ -2417,10 +2418,10 @@ public class BigWaterResource {
             
             // Update existing users to have appropriate levels
             try (Connection conn = dataSource.getConnection()) {
-                // All SUBSCRIBER users are regular users and can be any of the 5 levels
-                // For now, set all SUBSCRIBER users to CHIEF level (default)
+                // All SUBSCRIBER users are regular users and can be any of the 7 levels
+                // For now, set all SUBSCRIBER users to FAN level (default)
                 try (PreparedStatement stmt = conn.prepareStatement("UPDATE users SET level = ? WHERE role = ?")) {
-                    stmt.setString(1, "CHIEF");
+                    stmt.setString(1, "FAN");
                     stmt.setString(2, "SUBSCRIBER");
                     int affectedRows = stmt.executeUpdate();
                     response.put("subscriberUpdated", affectedRows);
@@ -2435,9 +2436,9 @@ public class BigWaterResource {
                     response.put("superAdminUpdated", affectedRows);
                 }
                 
-                // ADMIN → MINISTER (system manager)
+                // ADMIN → LEADER (system manager)
                 try (PreparedStatement stmt = conn.prepareStatement("UPDATE users SET level = ? WHERE role = ?")) {
-                    stmt.setString(1, "MINISTER");
+                    stmt.setString(1, "LEADER");
                     stmt.setString(2, "ADMIN");
                     int affectedRows = stmt.executeUpdate();
                     response.put("adminUpdated", affectedRows);
@@ -2507,7 +2508,7 @@ public class BigWaterResource {
             
             try (Connection conn = dataSource.getConnection()) {
                 // Add level column
-                try (PreparedStatement stmt = conn.prepareStatement("ALTER TABLE users ADD COLUMN level VARCHAR(20) DEFAULT 'CHIEF'")) {
+                try (PreparedStatement stmt = conn.prepareStatement("ALTER TABLE users ADD COLUMN level VARCHAR(20) DEFAULT 'FAN'")) {
                     int affectedRows = stmt.executeUpdate();
                     response.put("levelColumnAdded", true);
                     response.put("affectedRows", affectedRows);
@@ -2922,16 +2923,16 @@ public class BigWaterResource {
             newDownline.setRole(User.UserRole.SUBSCRIBER);
             // Make new member ACTIVE by default
             newDownline.setStatus(User.UserStatus.ACTIVE);
-            // Set level from request if provided; fallback to CHIEF for unknown or missing values
+            // Set level from request if provided; fallback to FAN for unknown or missing values
             if (levelStr != null && !levelStr.trim().isEmpty()) {
                 try {
                     User.UserLevel parsed = User.UserLevel.fromString(levelStr.trim());
-                    newDownline.setLevel(parsed != null ? parsed : User.UserLevel.CHIEF);
+                    newDownline.setLevel(parsed != null ? parsed : User.UserLevel.FAN);
                 } catch (Exception ignore) {
-                    newDownline.setLevel(User.UserLevel.CHIEF);
+                    newDownline.setLevel(User.UserLevel.FAN);
                 }
             } else {
-                newDownline.setLevel(User.UserLevel.CHIEF);
+                newDownline.setLevel(User.UserLevel.FAN);
             }
             
             // Update the user with all fields
@@ -3184,6 +3185,160 @@ public class BigWaterResource {
             response.put("count", subscriptions.size());
             return Response.ok(response).build();
             
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    // =====================================================
+    // NEW WALLET API ENDPOINTS
+    // =====================================================
+
+    @GET
+    @Path("/user/{userId}/wallet")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUserWallet(@PathParam("userId") Long userId) {
+        try {
+            Optional<Wallet> walletOpt = walletService.findWalletByUserId(userId);
+            Map<String, Object> response = new HashMap<>();
+            
+            if (walletOpt.isPresent()) {
+                response.put("success", true);
+                response.put("data", walletOpt.get());
+            } else {
+                response.put("success", false);
+                response.put("error", "User wallet not found");
+                return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+            }
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @POST
+    @Path("/user/{userId}/wallet")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createUserWallet(@PathParam("userId") Long userId, 
+                                   Map<String, Object> body) {
+        try {
+            String walletName = (String) body.get("walletName");
+            String tronAddress = (String) body.get("tronAddress");
+            String polygonAddress = (String) body.get("polygonAddress");
+            
+            Wallet wallet;
+            if (tronAddress != null || polygonAddress != null) {
+                wallet = walletService.createUserWallet(userId, walletName, tronAddress, polygonAddress);
+            } else {
+                wallet = walletService.createUserWallet(userId, walletName);
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", wallet);
+            
+            return Response.status(Response.Status.CREATED).entity(response).build();
+        } catch (RuntimeException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @PUT
+    @Path("/user/{userId}/wallet/addresses")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updateWalletAddresses(@PathParam("userId") Long userId, 
+                                        Map<String, Object> body) {
+        try {
+            String tronAddress = (String) body.get("tronAddress");
+            String polygonAddress = (String) body.get("polygonAddress");
+            
+            Wallet wallet = walletService.updateWalletAddresses(userId, tronAddress, polygonAddress);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", wallet);
+            
+            return Response.ok(response).build();
+        } catch (RuntimeException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @PUT
+    @Path("/user/{userId}/wallet/address/{network}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updateWalletAddress(@PathParam("userId") Long userId,
+                                      @PathParam("network") String network,
+                                      Map<String, Object> body) {
+        try {
+            String address = (String) body.get("address");
+            
+            if (address == null || address.trim().isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Address is required");
+                return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+            }
+            
+            Wallet wallet = walletService.updateWalletAddress(userId, network, address);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", wallet);
+            
+            return Response.ok(response).build();
+        } catch (RuntimeException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @GET
+    @Path("/wallets/new")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllNewWallets() {
+        try {
+            List<Wallet> wallets = walletService.getAllWallets();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", wallets);
+            response.put("total", wallets.size());
+            
+            return Response.ok(response).build();
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);

@@ -279,6 +279,37 @@ class ApiService {
     })
   }
 
+  // NEW WALLET API METHODS
+  
+  async getUserWallet(userId) {
+    return this.request(`/user/${userId}/wallet`)
+  }
+
+  async createUserWallet(userId, walletData) {
+    return this.request(`/user/${userId}/wallet`, {
+      method: 'POST',
+      body: JSON.stringify(walletData)
+    })
+  }
+
+  async updateWalletAddresses(userId, addresses) {
+    return this.request(`/user/${userId}/wallet/addresses`, {
+      method: 'PUT',
+      body: JSON.stringify(addresses)
+    })
+  }
+
+  async updateWalletAddress(userId, network, address) {
+    return this.request(`/user/${userId}/wallet/address/${network}`, {
+      method: 'PUT',
+      body: JSON.stringify({ address })
+    })
+  }
+
+  async getAllNewWallets() {
+    return this.request('/wallets/new')
+  }
+
   async recordWalletPayment(payload) {
     return this.request('/transactions/self-report', {
       method: 'POST',
@@ -400,6 +431,11 @@ export const deleteWallet = apiService.deleteWallet.bind(apiService)
 export const toggleWalletStatus = apiService.toggleWalletStatus.bind(apiService)
 export const payToWallet = apiService.payToWallet.bind(apiService)
 export const withdrawFromWallet = apiService.withdrawFromWallet.bind(apiService)
+export const getUserWallet = apiService.getUserWallet.bind(apiService)
+export const createUserWallet = apiService.createUserWallet.bind(apiService)
+export const updateWalletAddresses = apiService.updateWalletAddresses.bind(apiService)
+export const updateWalletAddress = apiService.updateWalletAddress.bind(apiService)
+export const getAllNewWallets = apiService.getAllNewWallets.bind(apiService)
 export const getTransactionsByUserId = apiService.getTransactionsByUserId.bind(apiService)
 export const getTransactionsByWalletId = apiService.getTransactionsByWalletId.bind(apiService)
 export const getUserNetwork = apiService.getUserNetwork.bind(apiService)

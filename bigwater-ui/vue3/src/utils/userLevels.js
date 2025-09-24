@@ -6,53 +6,61 @@ export const USER_ROLES = {
 }
 
 export const SUBSCRIBER_LEVELS = {
-  CUSTOMER: {
-    level: 0,
-    name: 'Customer',
-    stars: 0,
-    minReferrals: 0,
-    bonusMultiplier: 0,
-    icon: '👤'
-  },
-  CHIEF: {
+  FAN: {
     level: 1,
-    name: 'Chief',
+    name: 'Fan',
     stars: 1,
-    minReferrals: 1,
+    minReferrals: 0,
     bonusMultiplier: 0, // No extra bonus
+    icon: '👨‍💼'
+  },
+  SUBSCRIBER: {
+    level: 2,
+    name: 'Subscriber',
+    stars: 2,
+    minReferrals: 1,
+    bonusMultiplier: 0.005, // Level 1 extra 0.5%
     icon: '⭐'
   },
-  MAYOR: {
-    level: 2,
-    name: 'Mayor', 
-    stars: 2,
+  READER: {
+    level: 3,
+    name: 'Reader', 
+    stars: 3,
     minReferrals: 5,
     bonusMultiplier: 0.01, // Level 1 extra 1%
     icon: '⭐⭐'
   },
-  GOVERNOR: {
-    level: 3,
-    name: 'Governor',
-    stars: 3,
+  PROMOTER: {
+    level: 4,
+    name: 'Promoter',
+    stars: 4,
     minReferrals: 15,
-    bonusMultiplier: 0.01, // Level 2 extra 1%
+    bonusMultiplier: 0.015, // Level 2 extra 1.5%
     icon: '⭐⭐⭐'
   },
-  MINISTER: {
-    level: 4,
-    name: 'Minister',
-    stars: 4,
+  LEADER: {
+    level: 5,
+    name: 'Leader',
+    stars: 5,
     minReferrals: 30,
     bonusMultiplier: 0.02, // Level 2 extra 2%
     icon: '⭐⭐⭐⭐'
   },
-  PRESIDENT: {
-    level: 5,
-    name: 'President',
-    stars: 5,
+  INFLUENCER: {
+    level: 6,
+    name: 'Influencer',
+    stars: 6,
     minReferrals: 50,
-    bonusMultiplier: 0.03, // All levels extra 3%
+    bonusMultiplier: 0.025, // Level 3 extra 2.5%
     icon: '⭐⭐⭐⭐⭐'
+  },
+  PRESIDENT: {
+    level: 7,
+    name: 'President',
+    stars: 7,
+    minReferrals: 100,
+    bonusMultiplier: 0.03, // All levels extra 3%
+    icon: '⭐⭐⭐⭐⭐⭐'
   }
 }
 
@@ -76,9 +84,9 @@ export const REWARD_STRUCTURE = {
 
 // Calculate user level based on direct referrals
 export function calculateUserLevel(directReferrals, weeksSubscribed = 24) {
-  // If no referrals yet OR subscription weeks < 24 → Customer
-  if (!directReferrals || directReferrals === 0 || weeksSubscribed < 24) {
-    return SUBSCRIBER_LEVELS.CUSTOMER
+  // Default is FAN level
+  if (!directReferrals || directReferrals === 0) {
+    return SUBSCRIBER_LEVELS.FAN
   }
 
   const levels = Object.values(SUBSCRIBER_LEVELS)
@@ -91,7 +99,7 @@ export function calculateUserLevel(directReferrals, weeksSubscribed = 24) {
     }
   }
   
-  return SUBSCRIBER_LEVELS.CUSTOMER
+  return SUBSCRIBER_LEVELS.FAN
 }
 
 // Calculate bonus percentage for a tier based on user level
@@ -103,22 +111,32 @@ export function calculateBonusPercentage(userLevel, tier) {
   
   // Apply level multipliers
   switch (userLevel.level) {
-    case 2: // Mayor - Level 1 extra 1%
+    case 2: // Subscriber - Level 1 extra 0.5%
       if (tier === 'TIER_1') {
         bonus += userLevel.bonusMultiplier
       }
       break
-    case 3: // Governor - Level 2 extra 1%
+    case 3: // Reader - Level 1 extra 1%
+      if (tier === 'TIER_1') {
+        bonus += userLevel.bonusMultiplier
+      }
+      break
+    case 4: // Promoter - Level 2 extra 1.5%
       if (tier === 'TIER_2') {
         bonus += userLevel.bonusMultiplier
       }
       break
-    case 4: // Minister - Level 2 extra 2%
+    case 5: // Leader - Level 2 extra 2%
       if (tier === 'TIER_2') {
         bonus += userLevel.bonusMultiplier
       }
       break
-    case 5: // President - All levels extra 3%
+    case 6: // Influencer - Level 3 extra 2.5%
+      if (tier === 'TIER_3') {
+        bonus += userLevel.bonusMultiplier
+      }
+      break
+    case 7: // President - All levels extra 3%
       bonus += userLevel.bonusMultiplier
       break
   }

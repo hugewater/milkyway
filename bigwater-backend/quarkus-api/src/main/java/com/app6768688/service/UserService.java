@@ -42,7 +42,7 @@ public class UserService {
         user.setReferredByCode(referralCode != null ? referralCode : "COMPANY001");
         user.setRole(User.UserRole.SUBSCRIBER);
         user.setStatus(User.UserStatus.ACTIVE);
-        user.setLevel(User.UserLevel.CHIEF); // All new users start as CHIEF level
+        user.setLevel(User.UserLevel.FAN); // All new users start as FAN level
         user.setJoinDate(LocalDateTime.now());
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -64,7 +64,7 @@ public class UserService {
         user.setReferredByCode("COMPANY001");
         user.setRole(User.UserRole.ADMIN);
         user.setStatus(User.UserStatus.ACTIVE);
-        user.setLevel(User.UserLevel.MINISTER);
+        user.setLevel(User.UserLevel.PRESIDENT);
         user.setJoinDate(LocalDateTime.now());
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());

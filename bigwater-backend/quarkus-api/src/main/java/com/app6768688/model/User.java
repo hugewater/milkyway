@@ -30,7 +30,7 @@ public class User {
         this.lastName = lastName;
         this.role = UserRole.SUBSCRIBER;
         this.status = UserStatus.ACTIVE;
-        this.level = UserLevel.CHIEF;
+        this.level = UserLevel.FAN;
         this.referredByCode = "COMPANY001";
         this.joinDate = LocalDateTime.now();
         this.createdAt = LocalDateTime.now();
@@ -122,11 +122,13 @@ public class User {
     }
 
     public enum UserLevel {
-        CHIEF("Chief", 1),
-        MAYOR("Mayor", 2),
-        GOVERNOR("Governor", 3),
-        MINISTER("Minister", 4),
-        PRESIDENT("President", 5);
+        FAN("Fan", 1),
+        SUBSCRIBER("Subscriber", 2),
+        READER("Reader", 3),
+        PROMOTER("Promoter", 4),
+        LEADER("Leader", 5),
+        INFLUENCER("Influencer", 6),
+        PRESIDENT("President", 7);
 
         private final String displayName;
         private final int rank;
@@ -145,7 +147,7 @@ public class User {
         }
 
         public static UserLevel fromString(String level) {
-            if (level == null) return CHIEF;
+            if (level == null) return FAN;
             
             for (UserLevel userLevel : values()) {
                 if (userLevel.name().equalsIgnoreCase(level) || 
@@ -153,7 +155,7 @@ public class User {
                     return userLevel;
                 }
             }
-            return CHIEF;
+            return FAN;
         }
     }
 }

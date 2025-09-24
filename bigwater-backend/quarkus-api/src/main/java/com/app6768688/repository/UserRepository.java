@@ -36,7 +36,7 @@ public class UserRepository {
             stmt.setString(5, user.getPhone());
             stmt.setString(6, user.getRole().name());
             stmt.setString(7, user.getStatus().name());
-            stmt.setString(8, user.getLevel() != null ? user.getLevel().name() : "CHIEF");
+            stmt.setString(8, user.getLevel() != null ? user.getLevel().name() : "FAN");
             stmt.setString(9, user.getReferralCode());
             stmt.setString(10, user.getReferredByCode());
             stmt.setTimestamp(11, Timestamp.valueOf(user.getJoinDate()));
@@ -144,7 +144,7 @@ public class UserRepository {
         public String order;  // asc/desc
         public String role;   // SUBSCRIBER/ADMIN/SUPER_ADMIN
         public String status; // ACTIVE/INACTIVE/SUSPENDED
-        public String level;  // CHIEF/MAYOR/...
+        public String level;  // FAN/SUBSCRIBER/READER/PROMOTER/LEADER/INFLUENCER/PRESIDENT
         public String q;      // name/email/referral_code like
     }
 
@@ -378,7 +378,7 @@ public class UserRepository {
             String levelStr = rs.getString("level");
             user.setLevel(User.UserLevel.fromString(levelStr));
         } catch (SQLException e) {
-            user.setLevel(User.UserLevel.CHIEF); // Default value
+            user.setLevel(User.UserLevel.FAN); // Default value
         }
         
         user.setReferralCode(rs.getString("referral_code"));

@@ -1,6 +1,7 @@
 package com.app6768688.repository;
 
 import com.app6768688.model.UsdtWallet;
+import com.app6768688.model.Wallet;
 import io.agroal.api.AgroalDataSource;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -550,6 +551,203 @@ public class WalletRepository {
             isVerified = false; // Default value
         }
         wallet.setIsVerified(isVerified);
+        
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) {
+            wallet.setCreatedAt(createdAt.toLocalDateTime());
+        }
+        
+        Timestamp updatedAt = rs.getTimestamp("updated_at");
+        if (updatedAt != null) {
+            wallet.setUpdatedAt(updatedAt.toLocalDateTime());
+        }
+        
+        return wallet;
+    }
+
+    // NEW WALLET MODEL METHODS
+    
+    @Transactional
+    public Wallet createWallet(Wallet wallet) {
+        String sql = """
+            INSERT INTO wallets (user_id, wallet_name, tron_address, polygon_address, 
+                               balance, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+        
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            
+            stmt.setLong(1, wallet.getUserId());
+            stmt.setString(2, wallet.getWalletName());
+            
+            // Handle nullable addresses
+            if (wallet.getTronAddress() != null) {
+                stmt.setString(3, wallet.getTronAddress());
+            } else {
+                stmt.setNull(3, Types.VARCHAR);
+            }
+            
+            if (wallet.getPolygonAddress() != null) {
+                stmt.setString(4, wallet.getPolygonAddress());
+            } else {
+                stmt.setNull(4, Types.VARCHAR);
+            }
+            
+            stmt.setBigDecimal(5, wallet.getBalance());
+            stmt.setBoolean(6, wallet.getIsActive());
+            stmt.setTimestamp(7, Timestamp.valueOf(wallet.getCreatedAt()));
+            stmt.setTimestamp(8, Timestamp.valueOf(wallet.getUpdatedAt()));
+            
+            int affectedRows = stmt.executeUpdate();
+            if (affectedRows == 0) {
+                throw new SQLException("Creating wallet failed, no rows affected.");
+            }
+            
+            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    wallet.setId(generatedKeys.getLong(1));
+                } else {
+                    throw new SQLException("Creating wallet failed, no ID obtained.");
+                }
+            }
+            
+            return wallet;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error creating wallet", e);
+        }
+    }
+
+    public Optional<Wallet> findWalletByUserId(Long userId) {
+        String sql = "SELECT * FROM wallets WHERE user_id = ?";
+        
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setLong(1, userId);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapResultSetToNewWallet(rs));
+                }
+                return Optional.empty();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding wallet by user ID", e);
+        }
+    }
+
+    public Optional<Wallet> findWalletById(Long walletId) {
+        String sql = "SELECT * FROM wallets WHERE id = ?";
+        
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setLong(1, walletId);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapResultSetToNewWallet(rs));
+                }
+                return Optional.empty();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding wallet by ID", e);
+        }
+    }
+
+    @Transactional
+    public Wallet updateWallet(Wallet wallet) {
+        String sql = """
+            UPDATE wallets 
+            SET wallet_name = ?, tron_address = ?, polygon_address = ?, 
+                balance = ?, is_active = ?, updated_at = ?
+            WHERE id = ?
+            """;
+        
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setString(1, wallet.getWalletName());
+            
+            // Handle nullable addresses
+            if (wallet.getTronAddress() != null) {
+                stmt.setString(2, wallet.getTronAddress());
+            } else {
+                stmt.setNull(2, Types.VARCHAR);
+            }
+            
+            if (wallet.getPolygonAddress() != null) {
+                stmt.setString(3, wallet.getPolygonAddress());
+            } else {
+                stmt.setNull(3, Types.VARCHAR);
+            }
+            
+            stmt.setBigDecimal(4, wallet.getBalance());
+            stmt.setBoolean(5, wallet.getIsActive());
+            stmt.setTimestamp(6, Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setLong(7, wallet.getId());
+            
+            int affectedRows = stmt.executeUpdate();
+            if (affectedRows == 0) {
+                throw new RuntimeException("Wallet not found with ID: " + wallet.getId());
+            }
+            
+            // Update the updatedAt field
+            wallet.setUpdatedAt(LocalDateTime.now());
+            
+            return wallet;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error updating wallet", e);
+        }
+    }
+
+    public List<Wallet> findAllWallets() {
+        String sql = "SELECT * FROM wallets ORDER BY created_at DESC";
+        List<Wallet> wallets = new ArrayList<>();
+        
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                wallets.add(mapResultSetToNewWallet(rs));
+            }
+            
+            return wallets;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding all wallets", e);
+        }
+    }
+
+    public boolean existsWalletByUserId(Long userId) {
+        String sql = "SELECT COUNT(*) FROM wallets WHERE user_id = ?";
+        
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setLong(1, userId);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+                return false;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error checking if wallet exists for user", e);
+        }
+    }
+
+    private Wallet mapResultSetToNewWallet(ResultSet rs) throws SQLException {
+        Wallet wallet = new Wallet();
+        wallet.setId(rs.getLong("id"));
+        wallet.setUserId(rs.getLong("user_id"));
+        wallet.setWalletName(rs.getString("wallet_name"));
+        wallet.setTronAddress(rs.getString("tron_address"));
+        wallet.setPolygonAddress(rs.getString("polygon_address"));
+        wallet.setBalance(rs.getBigDecimal("balance"));
+        wallet.setIsActive(rs.getBoolean("is_active"));
         
         Timestamp createdAt = rs.getTimestamp("created_at");
         if (createdAt != null) {
