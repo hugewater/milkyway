@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -153,6 +154,55 @@ public class UserService {
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             user.setEmailVerifiedAt(LocalDateTime.now());
+            return userRepository.update(user);
+        }
+        throw new RuntimeException("User not found with ID: " + userId);
+    }
+
+    @Transactional
+    public User updateTotalPay(Long userId, BigDecimal paymentAmount) {
+        System.out.println("UserService.updateTotalPay called: userId=" + userId + ", paymentAmount=" + paymentAmount);
+        
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            BigDecimal currentTotalPay = user.getTotalPay() != null ? user.getTotalPay() : BigDecimal.ZERO;
+            System.out.println("Current total_pay for user " + userId + ": " + currentTotalPay);
+            
+            BigDecimal newTotalPay = currentTotalPay.add(paymentAmount);
+            user.setTotalPay(newTotalPay);
+            user.setUpdatedAt(LocalDateTime.now());
+            
+            System.out.println("New total_pay for user " + userId + ": " + newTotalPay);
+            User updatedUser = userRepository.update(user);
+            System.out.println("Successfully updated total_pay for user " + userId + " to " + newTotalPay);
+            return updatedUser;
+        }
+        System.err.println("User not found with ID: " + userId);
+        throw new RuntimeException("User not found with ID: " + userId);
+    }
+
+    @Transactional
+    public User updateTotalReward(Long userId, BigDecimal rewardAmount) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            BigDecimal currentTotalReward = user.getTotalReward() != null ? user.getTotalReward() : BigDecimal.ZERO;
+            user.setTotalReward(currentTotalReward.add(rewardAmount));
+            user.setUpdatedAt(LocalDateTime.now());
+            return userRepository.update(user);
+        }
+        throw new RuntimeException("User not found with ID: " + userId);
+    }
+
+    @Transactional
+    public User updateTotalWin(Long userId, BigDecimal winAmount) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            BigDecimal currentTotalWin = user.getTotalWin() != null ? user.getTotalWin() : BigDecimal.ZERO;
+            user.setTotalWin(currentTotalWin.add(winAmount));
+            user.setUpdatedAt(LocalDateTime.now());
             return userRepository.update(user);
         }
         throw new RuntimeException("User not found with ID: " + userId);

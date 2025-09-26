@@ -1,5 +1,6 @@
 package com.app6768688.model;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class User {
@@ -19,6 +20,9 @@ public class User {
     private LocalDateTime emailVerifiedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private BigDecimal totalPay;
+    private BigDecimal totalReward;
+    private BigDecimal totalWin;
 
     // Constructors
     public User() {}
@@ -35,6 +39,9 @@ public class User {
         this.joinDate = LocalDateTime.now();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        this.totalPay = BigDecimal.ZERO;
+        this.totalReward = BigDecimal.ZERO;
+        this.totalWin = BigDecimal.ZERO;
     }
 
     // Getters and Setters
@@ -85,6 +92,16 @@ public class User {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public BigDecimal getTotalPay() { return totalPay; }
+    public void setTotalPay(BigDecimal totalPay) { this.totalPay = totalPay; }
+
+    public BigDecimal getTotalReward() { return totalReward; }
+    public void setTotalReward(BigDecimal totalReward) { this.totalReward = totalReward; }
+
+
+    public BigDecimal getTotalWin() { return totalWin; }
+    public void setTotalWin(BigDecimal totalWin) { this.totalWin = totalWin; }
 
     // Helper methods
     public String getFullName() {

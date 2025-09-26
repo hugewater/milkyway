@@ -34,6 +34,7 @@ async function validateStoredToken(tokenValue) {
   }
 }
 
+
 // Login function
 export async function login(email, password) {
   try {

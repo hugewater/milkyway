@@ -30,6 +30,7 @@ import AdminTransactions from './components/admin/AdminTransactions.vue'
 import MyTransactions from './components/user/MyTransactions.vue'
 import AdminAiAgents from './components/admin/AdminAiAgents.vue'
 import AdminAiChats from './components/admin/AdminAiChats.vue'
+import AdminWalletManager from './components/admin/AdminWalletManager.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -54,10 +55,11 @@ const routes = [
   { path: '/admin/certificates', component: AdminCertificates },
   { path: '/admin/admin-manager', component: () => import('./components/admin/AdminManager.vue') },
   { path: '/admin/members', component: AdminMembers },
-  { path: '/admin/transactions', component: AdminTransactions }
-  ,{ path: '/admin/ai/agents', component: AdminAiAgents }
-  ,{ path: '/admin/ai/chats', component: AdminAiChats }
-  ,{ path: '/ai/chats', component: AdminAiChats }
+  { path: '/admin/transactions', component: AdminTransactions },
+  { path: '/admin/wallet-manager', component: AdminWalletManager },
+  { path: '/admin/ai/agents', component: AdminAiAgents },
+  { path: '/admin/ai/chats', component: AdminAiChats },
+  { path: '/ai/chats', component: AdminAiChats }
 ]
 
 const router = createRouter({

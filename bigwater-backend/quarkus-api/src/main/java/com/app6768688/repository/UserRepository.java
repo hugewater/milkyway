@@ -168,9 +168,17 @@ public class UserRepository {
         buildWhere(sql, params, q);
         String sortCol = switch (q.sortBy != null ? q.sortBy : "created_at") {
             case "id" -> "id";
+            case "first_name" -> "first_name";
+            case "last_name" -> "last_name";
+            case "email" -> "email";
+            case "level" -> "level";
+            case "status" -> "status";
             case "last_login" -> "last_login";
             case "join_date" -> "join_date";
             case "created_at" -> "created_at";
+            case "total_pay" -> "total_pay";
+            case "total_reward" -> "total_reward";
+            case "total_win" -> "total_win";
             default -> "created_at";
         };
         String order = (q.order != null && q.order.equalsIgnoreCase("asc")) ? "ASC" : "DESC";
@@ -273,7 +281,8 @@ public class UserRepository {
         String sql = """
             UPDATE users SET email = ?, password_hash = ?, first_name = ?, last_name = ?, 
                             phone = ?, role = ?, status = ?, level = ?, referral_code = ?, referred_by_code = ?,
-                            last_login = ?, email_verified_at = ?, updated_at = ?
+                            last_login = ?, email_verified_at = ?, total_pay = ?, total_reward = ?, 
+                            total_win = ?, updated_at = ?
             WHERE id = ?
             """;
         
@@ -292,8 +301,11 @@ public class UserRepository {
             stmt.setString(10, user.getReferredByCode());
             stmt.setTimestamp(11, user.getLastLogin() != null ? Timestamp.valueOf(user.getLastLogin()) : null);
             stmt.setTimestamp(12, user.getEmailVerifiedAt() != null ? Timestamp.valueOf(user.getEmailVerifiedAt()) : null);
-            stmt.setTimestamp(13, Timestamp.valueOf(LocalDateTime.now()));
-            stmt.setLong(14, user.getId());
+            stmt.setBigDecimal(13, user.getTotalPay());
+            stmt.setBigDecimal(14, user.getTotalReward());
+            stmt.setBigDecimal(15, user.getTotalWin());
+            stmt.setTimestamp(16, Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setLong(17, user.getId());
             
             int affectedRows = stmt.executeUpdate();
             if (affectedRows == 0) {
@@ -407,6 +419,26 @@ public class UserRepository {
         Timestamp updatedAt = rs.getTimestamp("updated_at");
         if (updatedAt != null) {
             user.setUpdatedAt(updatedAt.toLocalDateTime());
+        }
+        
+        // Handle new fields that might not exist in older database versions
+        try {
+            user.setTotalPay(rs.getBigDecimal("total_pay"));
+        } catch (SQLException e) {
+            user.setTotalPay(java.math.BigDecimal.ZERO);
+        }
+        
+        try {
+            user.setTotalReward(rs.getBigDecimal("total_reward"));
+        } catch (SQLException e) {
+            user.setTotalReward(java.math.BigDecimal.ZERO);
+        }
+        
+        
+        try {
+            user.setTotalWin(rs.getBigDecimal("total_win"));
+        } catch (SQLException e) {
+            user.setTotalWin(java.math.BigDecimal.ZERO);
         }
         
         return user;

@@ -1,10 +1,9 @@
-// API Configuration
-const API_BASE_URL = '/bw-api'
+import { getApiUrl, BACKEND_API_URLS } from './apiUrls.js'
 
 // API Service Class
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL
+    this.baseURL = BACKEND_API_URLS.BASE
   }
 
   // Helper method to get auth headers
@@ -48,21 +47,21 @@ class ApiService {
 
   // Authentication APIs
   async login(email, password) {
-    return this.request('/auth/login', {
+    return this.request(BACKEND_API_URLS.LOGIN, {
       method: 'POST',
       body: JSON.stringify({ email, password })
     })
   }
 
   async register(userData) {
-    return this.request('/auth/register', {
+    return this.request(BACKEND_API_URLS.REGISTER, {
       method: 'POST',
       body: JSON.stringify(userData)
     })
   }
 
   async validateToken(token) {
-    return this.request('/auth/validate', {
+    return this.request(BACKEND_API_URLS.VALIDATE, {
       method: 'POST',
       body: JSON.stringify({ token })
     })
@@ -211,10 +210,18 @@ class ApiService {
     params.set('limit', limit)
     if (sort) params.set('sort', sort)
     if (order) params.set('order', order)
-    if (type) params.set('type', type)
+    if (type && type !== '') params.set('type', type)
     if (typeof active === 'boolean') params.set('active', active ? 'true' : 'false')
-    if (q) params.set('q', q)
-    return this.request(`/wallets?${params.toString()}`)
+    if (q && q !== '') params.set('q', q)
+    
+    console.log('=== getWalletsPaged Debug ===')
+    console.log('Input parameters:', { offset, limit, sort, order, type, active, q })
+    console.log('URL params:', params.toString())
+    
+    const url = `/wallets?${params.toString()}`
+    console.log('Final URL:', url)
+    
+    return this.request(url)
   }
 
   async getWalletsByUserId(userId) {
@@ -387,6 +394,71 @@ class ApiService {
   async getVersion() {
     return this.request('/version')
   }
+
+  // COMPANY WALLET API METHODS
+  
+  async getCompanyWallets() {
+    return this.request('/company-wallets')
+  }
+
+  async getActiveCompanyWallets() {
+    return this.request('/company-wallets/active')
+  }
+
+  async getCompanyWallet(id) {
+    return this.request(`/company-wallets/${id}`)
+  }
+
+  async createCompanyWallet(walletData) {
+    return this.request('/company-wallets', {
+      method: 'POST',
+      body: JSON.stringify(walletData)
+    })
+  }
+
+  async updateCompanyWallet(id, walletData) {
+    return this.request(`/company-wallets/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(walletData)
+    })
+  }
+
+  async deleteCompanyWallet(id) {
+    return this.request(`/company-wallets/${id}`, {
+      method: 'DELETE'
+    })
+  }
+
+  async toggleCompanyWalletStatus(id) {
+    return this.request(`/company-wallets/${id}/toggle-status`, {
+      method: 'POST'
+    })
+  }
+
+  async getRandomCompanyWallet() {
+    return this.request('/company-wallets/random')
+  }
+
+  async getCompanyWalletQRCodes(id) {
+    return this.request(`/company-wallets/${id}/qr-codes`)
+  }
+
+  // New wallet architecture API methods
+  async getCompanyWalletsGrouped() {
+    return this.request('/company-wallets/grouped')
+  }
+
+  async getCompanyWalletsByType(walletType) {
+    return this.request(`/company-wallets/by-type/${walletType}`)
+  }
+
+  async getCompanyWalletStatistics() {
+    return this.request('/company-wallets/statistics')
+  }
+
+  async getWalletTypes() {
+    return this.request('/wallet-types')
+  }
 }
 
 // Create and export API service instance
@@ -450,4 +522,19 @@ export const listAgents = apiService.listAgents.bind(apiService)
 export const createAgent = apiService.createAgent.bind(apiService)
 export const updateAgent = apiService.updateAgent.bind(apiService)
 export const deleteAgent = apiService.deleteAgent.bind(apiService)
+
+// Company Wallets
+export const getCompanyWallets = apiService.getCompanyWallets.bind(apiService)
+export const getActiveCompanyWallets = apiService.getActiveCompanyWallets.bind(apiService)
+export const getCompanyWallet = apiService.getCompanyWallet.bind(apiService)
+export const createCompanyWallet = apiService.createCompanyWallet.bind(apiService)
+export const updateCompanyWallet = apiService.updateCompanyWallet.bind(apiService)
+export const deleteCompanyWallet = apiService.deleteCompanyWallet.bind(apiService)
+export const toggleCompanyWalletStatus = apiService.toggleCompanyWalletStatus.bind(apiService)
+export const getRandomCompanyWallet = apiService.getRandomCompanyWallet.bind(apiService)
+export const getCompanyWalletQRCodes = apiService.getCompanyWalletQRCodes.bind(apiService)
+export const getCompanyWalletsGrouped = apiService.getCompanyWalletsGrouped.bind(apiService)
+export const getCompanyWalletsByType = apiService.getCompanyWalletsByType.bind(apiService)
+export const getCompanyWalletStatistics = apiService.getCompanyWalletStatistics.bind(apiService)
+export const getWalletTypes = apiService.getWalletTypes.bind(apiService)
 

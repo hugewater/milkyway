@@ -141,12 +141,69 @@
           <table class="w-full">
             <thead class="bg-gray-50">
               <tr>
-                <th @click="toggleSortMembers('id')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th @click="toggleSortMembers('join_date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Join Date</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                <th @click="toggleSortMembers('id')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                  <div class="flex items-center">
+                    ID
+                    <svg v-if="sortMembers.field === 'id'" class="ml-1 w-4 h-4" :class="sortMembers.order === 'asc' ? 'text-blue-600' : 'text-blue-600'" fill="currentColor" viewBox="0 0 20 20">
+                      <path v-if="sortMembers.order === 'asc'" fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+                      <path v-else fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                  </div>
+                </th>
+                <th @click="toggleSortMembers('name')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                  <div class="flex items-center">
+                    Member
+                    <svg v-if="sortMembers.field === 'name'" class="ml-1 w-4 h-4" :class="sortMembers.order === 'asc' ? 'text-blue-600' : 'text-blue-600'" fill="currentColor" viewBox="0 0 20 20">
+                      <path v-if="sortMembers.order === 'asc'" fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+                      <path v-else fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                  </div>
+                </th>
+                <th @click="toggleSortMembers('level')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                  <div class="flex items-center">
+                    Level
+                    <svg v-if="sortMembers.field === 'level'" class="ml-1 w-4 h-4" :class="sortMembers.order === 'asc' ? 'text-blue-600' : 'text-blue-600'" fill="currentColor" viewBox="0 0 20 20">
+                      <path v-if="sortMembers.order === 'asc'" fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+                      <path v-else fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                  </div>
+                </th>
+                <th @click="toggleSortMembers('status')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                  <div class="flex items-center">
+                    Status
+                    <svg v-if="sortMembers.field === 'status'" class="ml-1 w-4 h-4" :class="sortMembers.order === 'asc' ? 'text-blue-600' : 'text-blue-600'" fill="currentColor" viewBox="0 0 20 20">
+                      <path v-if="sortMembers.order === 'asc'" fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+                      <path v-else fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                  </div>
+                </th>
+                <th @click="toggleSortMembers('join_date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                  <div class="flex items-center">
+                    Join Date
+                    <svg v-if="sortMembers.field === 'join_date'" class="ml-1 w-4 h-4" :class="sortMembers.order === 'asc' ? 'text-blue-600' : 'text-blue-600'" fill="currentColor" viewBox="0 0 20 20">
+                      <path v-if="sortMembers.order === 'asc'" fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+                      <path v-else fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                  </div>
+                </th>
+                <th @click="toggleSortMembers('total_pay')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                  <div class="flex items-center">
+                    Total Pay
+                    <svg v-if="sortMembers.field === 'total_pay'" class="ml-1 w-4 h-4" :class="sortMembers.order === 'asc' ? 'text-blue-600' : 'text-blue-600'" fill="currentColor" viewBox="0 0 20 20">
+                      <path v-if="sortMembers.order === 'asc'" fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+                      <path v-else fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                  </div>
+                </th>
+                <th @click="toggleSortMembers('total_reward')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                  <div class="flex items-center">
+                    Total Reward
+                    <svg v-if="sortMembers.field === 'total_reward'" class="ml-1 w-4 h-4" :class="sortMembers.order === 'asc' ? 'text-blue-600' : 'text-blue-600'" fill="currentColor" viewBox="0 0 20 20">
+                      <path v-if="sortMembers.order === 'asc'" fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+                      <path v-else fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                  </div>
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -188,7 +245,10 @@
                   {{ formatDate(member.joinDate) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  ${{ Number(member.balance || 0).toLocaleString() }}
+                  ${{ Number(member.totalPay || 0).toLocaleString() }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  ${{ Number(member.totalReward || 0).toLocaleString() }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium relative">
                   <div class="inline-flex items-center">
@@ -537,6 +597,7 @@
                 <tr>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">TRON Address</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">POLYGON Address</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
@@ -548,6 +609,11 @@
                 <tr v-for="w in wallets" :key="w.id">
                   <td class="px-4 py-2 text-sm text-gray-900">{{ w.id }}</td>
                   <td class="px-4 py-2 text-sm text-gray-900">{{ w.walletName }}</td>
+                  <td class="px-4 py-2 text-sm text-gray-900">
+                    <span :class="getWalletTypeClass(w.walletType)" class="px-2 py-1 text-xs rounded-full">
+                      {{ w.walletType || 'UNKNOWN' }}
+                    </span>
+                  </td>
                   <td class="px-4 py-2 text-sm text-gray-900">
                     <span v-if="w.tronAddress" class="text-blue-600" :title="w.tronAddress">
                       {{ w.tronAddress.length > 20 ? w.tronAddress.substring(0, 20) + '...' : w.tronAddress }}
@@ -599,17 +665,21 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">From Wallet Address</label>
-              <div class="flex space-x-2">
-                <input v-model="transactionForm.fromWalletAddress" type="text" required class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent" placeholder="Enter source wallet address">
-                <button @click="generateRandomAddress" type="button" class="px-3 py-2 text-sm bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200">
-                  Generate
-                </button>
-              </div>
+              <input v-model="transactionForm.fromWalletAddress" type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent" placeholder="Enter source wallet address">
               <p class="text-xs text-gray-500 mt-1">If wallet doesn't exist, a new one will be created automatically with 1000 USDT initial balance.</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Current Balance</label>
               <div class="mt-1 text-lg font-semibold text-gray-900">{{ selectedWallet?.balance }} USDT</div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">To Company Wallet</label>
+              <select v-model="transactionForm.toWalletId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent">
+                <option v-for="cw in companyWallets" :key="cw.id" :value="cw.id">
+                  {{ cw.walletName || 'Company Wallet' }} ({{ cw.walletAddress?.slice(0, 8) }}...) - {{ cw.walletType }}
+                </option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Funds will be paid to the selected company wallet.</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Amount to Pay (USDT)</label>
@@ -647,7 +717,7 @@
               <label class="block text-sm font-medium text-gray-700">To Company Wallet</label>
               <select v-model="transactionForm.toWalletId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ocean focus:border-transparent">
                 <option v-for="cw in companyWallets" :key="cw.id" :value="cw.id">
-                  {{ cw.walletName || 'Company Wallet' }} ({{ cw.walletAddress?.slice(0, 8) }}...)
+                  {{ cw.walletName || 'Company Wallet' }} ({{ cw.walletAddress?.slice(0, 8) }}...) - {{ cw.walletType }}
                 </option>
               </select>
               <p class="text-xs text-gray-500 mt-1">Funds will be withdrawn to the selected company wallet.</p>
@@ -1148,6 +1218,7 @@ const offset = ref(0)
 const limit = ref(50)
 const sort = ref('created_at')
 const order = ref('desc')
+const sortMembers = ref({ field: 'created_at', order: 'desc' })
 let searchTimer = null
 
 const members = ref([])
@@ -1212,10 +1283,23 @@ const loadStats = async () => {
 const loadMembers = async () => {
   loadingMembers.value = true
   try {
+    // Map frontend sort fields to backend fields
+    const sortFieldMap = {
+      'id': 'id',
+      'name': 'first_name', // Sort by first name for member name
+      'level': 'level',
+      'status': 'status',
+      'join_date': 'created_at',
+      'total_pay': 'total_pay',
+      'total_reward': 'total_reward'
+    }
+    
+    const backendSortField = sortFieldMap[sort.value] || 'created_at'
+    
     const resp = await getUsersPaged({
       offset: offset.value,
       limit: limit.value,
-      sort: sort.value,
+      sort: backendSortField,
       order: order.value,
       status: statusFilter.value ? statusFilter.value.toUpperCase() : '',
       level: levelFilter.value,
@@ -1232,7 +1316,8 @@ const loadMembers = async () => {
       level: u.level || 'FAN',
       status: (u.status || 'ACTIVE').toLowerCase(),
       joinDate: u.joinDate || u.createdAt || new Date().toISOString(),
-      balance: u.balance || 0
+      totalPay: u.totalPay || 0,
+      totalReward: u.totalReward || 0
     }))
     total.value = resp.total || 0
   } catch (e) {
@@ -1246,9 +1331,13 @@ const loadMembers = async () => {
 const toggleSortMembers = (col) => {
   if (sort.value === col) {
     order.value = order.value === 'asc' ? 'desc' : 'asc'
+    sortMembers.value.order = order.value
   } else {
     sort.value = col
+    // Default to desc for all fields (highest/newest first)
     order.value = 'desc'
+    sortMembers.value.field = col
+    sortMembers.value.order = 'desc'
   }
   offset.value = 0
   loadMembers()
@@ -1642,25 +1731,45 @@ onBeforeUnmount(() => {
 
 // Action handlers - moved to end of file to avoid duplication
 
+// Helper function to get wallet type CSS classes
+const getWalletTypeClass = (walletType) => {
+  const classes = {
+    'POL': 'bg-blue-100 text-blue-800',
+    'TRON': 'bg-orange-100 text-orange-800', 
+    'ACT': 'bg-purple-100 text-purple-800',
+    'TTT': 'bg-green-100 text-green-800',
+    'USDT': 'bg-yellow-100 text-yellow-800'
+  }
+  return classes[walletType] || 'bg-gray-100 text-gray-800'
+}
+
+// Helper function to get selected company wallet
+const getSelectedCompanyWallet = () => {
+  if (!transactionForm.value.toWalletId || !companyWallets.value.length) return null
+  return companyWallets.value.find(cw => cw.id === transactionForm.value.toWalletId)
+}
+
 // Helper function to load user wallets using new API
 const loadUserWallets = async (userId) => {
   try {
-    // Get user wallet using new API and display in legacy format
-    const response = await getUserWallet(userId)
+    // Get all user wallets using the correct API
+    const response = await getWalletsByUserId(userId)
     if (response && response.success) {
-      // Convert new wallet format to legacy format for display
-      const newWallet = response.data
-      wallets.value = [{
-        id: newWallet.id,
-        walletName: newWallet.walletName,
-        walletAddress: newWallet.tronAddress || newWallet.polygonAddress || 'No address',
-        walletType: 'PRIMARY',
-        balance: newWallet.balance,
-        isActive: newWallet.isActive,
+      // Convert wallet format for display
+      const userWallets = response.data || []
+      wallets.value = userWallets.map(wallet => ({
+        id: wallet.id,
+        walletName: wallet.walletName || `Wallet ${wallet.id}`,
+        walletAddress: wallet.walletAddress || 'No address',
+        walletType: wallet.walletType || 'UNKNOWN',
+        balance: wallet.balance || 0,
+        isActive: wallet.isActive !== false,
         // Add additional info for display
-        tronAddress: newWallet.tronAddress,
-        polygonAddress: newWallet.polygonAddress
-      }]
+        tronAddress: wallet.tronAddress,
+        polygonAddress: wallet.polygonAddress,
+        createdAt: wallet.createdAt,
+        updatedAt: wallet.updatedAt
+      }))
     } else {
       wallets.value = []
     }
@@ -1828,9 +1937,52 @@ const viewTransactions = async (wallet) => {
   }
 }
 
-const openPayModal = (wallet) => {
+const openPayModal = async (wallet) => {
   selectedWallet.value = wallet
-  transactionForm.value = { amount: 0, description: '', fromWalletAddress: '', toAddress: '' }
+  
+  // 使用用户的钱包地址作为 fromWalletAddress
+  transactionForm.value = { 
+    amount: 0, 
+    description: '', 
+    fromWalletAddress: wallet.walletAddress, 
+    toAddress: '',
+    toWalletId: null
+  }
+  
+  // 加载公司钱包并根据用户钱包类型选择相同类型的公司钱包
+  await loadCompanyWallets()
+  console.log(`User wallet type: ${wallet.walletType}`)
+  console.log(`Available company wallets:`, companyWallets.value.map(cw => ({ id: cw.id, name: cw.walletName, type: cw.walletType })))
+  
+  if (companyWallets.value.length > 0) {
+    // 过滤出与用户钱包相同类型的公司钱包
+    const sameTypeWallets = companyWallets.value.filter(cw => cw.walletType === wallet.walletType)
+    console.log(`Same-type company wallets:`, sameTypeWallets.map(cw => ({ id: cw.id, name: cw.walletName, type: cw.walletType })))
+    
+    if (sameTypeWallets.length > 0) {
+      // 从相同类型的公司钱包中选择一个
+      if (sameTypeWallets.length === 1) {
+        // 如果只有一个相同类型的钱包，直接选择它
+        transactionForm.value.toWalletId = sameTypeWallets[0].id
+        console.log(`Selected the only same-type company wallet: ${sameTypeWallets[0].walletName} (${sameTypeWallets[0].walletType})`)
+      } else {
+        // 如果有多个相同类型的钱包，随机选择一个
+        const randomIndex = Math.floor(Math.random() * sameTypeWallets.length)
+        transactionForm.value.toWalletId = sameTypeWallets[randomIndex].id
+        console.log(`Selected random same-type company wallet: ${sameTypeWallets[randomIndex].walletName} (${sameTypeWallets[randomIndex].walletType})`)
+      }
+    } else {
+      // 如果没有相同类型的公司钱包，显示警告并选择第一个可用的
+      console.warn(`No ${wallet.walletType} company wallets found! Available types:`, companyWallets.value.map(cw => cw.walletType))
+      transactionForm.value.toWalletId = companyWallets.value[0].id
+      console.log(`Selected first available company wallet: ${companyWallets.value[0].walletName} (${companyWallets.value[0].walletType})`)
+    }
+  } else {
+    console.error('No company wallets available')
+    transactionMsg.value = 'No company wallets available for payment.'
+    transactionOk.value = false
+  }
+  
   showPayModal.value = true
 }
 
@@ -1888,16 +2040,24 @@ const submitPay = async () => {
       }
     }
 
+    // 获取选中的公司钱包
+    const selectedCompanyWallet = getSelectedCompanyWallet()
+    if (!selectedCompanyWallet) {
+      transactionMsg.value = 'No company wallet selected.'
+      transactionOk.value = false
+      return
+    }
+
     const payload = {
       fromWalletId: fromWallet.id,
-      toWalletId: selectedWallet.value.id,
+      toWalletId: selectedCompanyWallet.id,
       amount: parseFloat(transactionForm.value.amount)
     }
 
     const response = await transferBetweenWallets(payload)
 
     if (response && response.success) {
-      transactionMsg.value = `Successfully paid ${transactionForm.value.amount} USDT to ${selectedWallet.value.walletName}.`
+      transactionMsg.value = `Successfully paid ${transactionForm.value.amount} USDT to company wallet ${selectedCompanyWallet.walletName} (${selectedCompanyWallet.walletType}).`
       transactionOk.value = true
       closePayModal()
       await openWallets(selectedUser.value)
@@ -1914,10 +2074,48 @@ const submitPay = async () => {
 
 const loadCompanyWallets = async () => {
   try {
-    const resp = await getWallets({ type: 'COMPANY', active: true })
+    console.log('=== Frontend: Loading company wallets ===')
+    console.log('Calling getWalletsPaged with params:', { type: 'COMPANY', active: true })
+    
+    // 添加超时和错误处理
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10秒超时
+    
+    const resp = await getWalletsPaged({ type: 'COMPANY', active: true })
+    clearTimeout(timeoutId)
+    
+    console.log('API Response:', resp)
+    console.log('Response success:', resp?.success)
+    console.log('Response data:', resp?.data)
+    console.log('Response data type:', typeof resp?.data)
+    console.log('Response data length:', resp?.data?.length)
+    
     companyWallets.value = resp.data || []
+    console.log('Loaded company wallets:', companyWallets.value)
+    console.log('Company wallets count:', companyWallets.value.length)
+    
+    if (companyWallets.value.length === 0) {
+      console.warn('No company wallets found!')
+      console.log('Full response:', JSON.stringify(resp, null, 2))
+    }
+    
+    companyWallets.value.forEach((wallet, index) => {
+      console.log(`Company wallet ${index + 1}:`, {
+        id: wallet.id,
+        name: wallet.walletName,
+        address: wallet.walletAddress,
+        type: wallet.walletType,
+        isCompany: wallet.isCompany,
+        active: wallet.isActive
+      })
+    })
   } catch (e) {
     console.error('Failed to load company wallets:', e)
+    console.error('Error details:', {
+      message: e.message,
+      stack: e.stack,
+      name: e.name
+    })
     companyWallets.value = []
   }
 }
@@ -2001,10 +2199,6 @@ const findWalletByAddress = async (address) => {
   }
 }
 
-const generateRandomAddress = () => {
-  const randomString = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  transactionForm.value.fromWalletAddress = `0x${randomString}`;
-}
 
 const showUplineDownline = async (member) => {
   selectedUser.value = member

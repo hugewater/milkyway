@@ -619,14 +619,31 @@ const getEmailLocal = (email) => {
   return at > 0 ? email.slice(0, at) : email
 }
 const toG6Tree = (root) => {
-  const mapNode = (n) => ({
-    id: String(n.value),
-    label: getEmailLocal(n.email) || (n.referralCode || ''),
-    data: n,
-    children: (n.children || []).map(mapNode),
-    collapsed: n.collapsed === true
-  })
-  return mapNode(root)
+  const mapNode = (n) => {
+    // Validate node data to prevent SVG path errors
+    if (!n || typeof n !== 'object') {
+      console.warn('Invalid node data:', n)
+      return null
+    }
+    
+    const node = {
+      id: String(n.value || n.userId || Math.random()),
+      label: getEmailLocal(n.email) || (n.referralCode || ''),
+      data: n,
+      children: (n.children || []).map(mapNode).filter(child => child !== null),
+      collapsed: n.collapsed === true
+    }
+    
+    // Ensure label is a valid string
+    if (typeof node.label !== 'string') {
+      node.label = ''
+    }
+    
+    return node
+  }
+  
+  const result = mapNode(root)
+  return result || { id: 'root', label: 'Root', data: {}, children: [], collapsed: false }
 }
 
 // 收集当前树中所有 userId

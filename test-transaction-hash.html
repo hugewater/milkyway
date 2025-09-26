@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Transaction Hash Test</title>
+</head>
+<body>
+    <h1>Transaction Hash Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const mask = (v) => { 
+            const s = String(v || ''); 
+            if (s.length <= 6) return s; 
+            return 'x'.repeat(s.length - 6) + s.slice(-6) 
+        };
+        
+        // Test data from API
+        const testData = [
+            {
+                "id": 6,
+                "transactionHash": "new transaction hash",
+                "status": "PENDING"
+            },
+            {
+                "id": 5,
+                "transactionHash": null,
+                "status": "PENDING"
+            }
+        ];
+        
+        const results = document.getElementById('results');
+        
+        testData.forEach(item => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <h3>Transaction ID: ${item.id}</h3>
+                <p>Raw transactionHash: ${JSON.stringify(item.transactionHash)}</p>
+                <p>Masked: ${item.transactionHash ? mask(item.transactionHash) : '-'}</p>
+                <p>Condition: ${item.transactionHash ? 'Has hash' : 'No hash'}</p>
+                <hr>
+            `;
+            results.appendChild(div);
+        });
+    </script>
+</body>
+</html>

@@ -3,16 +3,24 @@ package com.app6768688;
 import com.app6768688.model.User;
 import com.app6768688.model.Certificate;
 import com.app6768688.model.UsdtWallet;
-import com.app6768688.model.Wallet;
 import com.app6768688.model.Journal;
 import com.app6768688.model.RandomDrawing;
 import com.app6768688.model.Subscription;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 import com.app6768688.service.UserService;
 import com.app6768688.service.CertificateService;
 import com.app6768688.service.WalletService;
 import com.app6768688.service.AuthService;
 import com.app6768688.service.JournalService;
 import com.app6768688.service.SubscriptionService;
+import com.app6768688.service.QRCodeService;
+import com.app6768688.service.TransactionService;
+import com.app6768688.util.PasswordUtil;
 import com.app6768688.dto.AuthRequest;
 import com.app6768688.dto.AuthResponse;
 import jakarta.inject.Inject;
@@ -53,6 +61,9 @@ public class BigWaterResource {
     
     @Inject
     TransactionService transactionService;
+    
+    @Inject
+    com.app6768688.service.TransactionVerificationService verificationService;
 
     @Inject
     AuthService authService;
@@ -68,6 +79,13 @@ public class BigWaterResource {
 
     @Inject
     PasswordUtil passwordUtil;
+
+
+    @ConfigProperty(name = "bw.company.user-id", defaultValue = "1")
+    Long companyUserId;
+
+    @Inject
+    QRCodeService qrCodeService;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -92,11 +110,14 @@ public class BigWaterResource {
                                      @QueryParam("status") String status,
                                      @QueryParam("q") String q) {
         try (Connection conn = dataSource.getConnection()) {
-            String base = "SELECT SQL_CALC_FOUND_ROWS t.id, t.wallet_id, t.user_id, t.to_wallet_id, t.amount_usdt, t.status, t.description, t.created_at, " +
-                          "wf.wallet_address AS from_address, wt.wallet_address AS to_address " +
+            String base = "SELECT t.id, t.wallet_id, t.user_id, t.to_wallet_id, t.amount_usdt, t.status, t.description, t.transaction_hash, t.created_at, t.metadata, " +
+                          "wf.wallet_address AS from_address, wt.wallet_address AS to_address, " +
+                          "wf.wallet_type AS from_wallet_type, wt.wallet_type AS to_wallet_type, " +
+                          "u.email AS user_email " +
                           "FROM transactions t " +
                           "LEFT JOIN usdt_wallets wf ON wf.id = t.wallet_id " +
                           "LEFT JOIN usdt_wallets wt ON wt.id = t.to_wallet_id " +
+                          "LEFT JOIN users u ON u.id = t.user_id " +
                           "WHERE 1=1";
             StringBuilder sql = new StringBuilder(base);
             java.util.List<Object> params = new java.util.ArrayList<>();
@@ -119,14 +140,63 @@ public class BigWaterResource {
                     row.put("amountUsdt", rs.getBigDecimal("amount_usdt"));
                     row.put("status", rs.getString("status"));
                     row.put("description", rs.getString("description"));
+                    row.put("transactionHash", rs.getString("transaction_hash"));
                     row.put("createdAt", rs.getTimestamp("created_at"));
-                    row.put("fromWalletAddress", rs.getString("from_address"));
+                    
+                    // Extract fromAddress from metadata if available, otherwise try to extract from description
+                    String fromAddress = rs.getString("from_address");
+                    String metadata = rs.getString("metadata");
+                    if (metadata != null && metadata.contains("\"fromAddress\"")) {
+                        try {
+                            // Simple JSON parsing to extract fromAddress
+                            String[] parts = metadata.split("\"fromAddress\":\"");
+                            if (parts.length > 1) {
+                                String[] endParts = parts[1].split("\"");
+                                if (endParts.length > 0) {
+                                    fromAddress = endParts[0];
+                                }
+                            }
+                        } catch (Exception e) {
+                            // If parsing fails, try to extract from description
+                        }
+                    }
+                    
+                    // If metadata parsing failed or no metadata, try to extract from description
+                    if (fromAddress == null || fromAddress.equals(rs.getString("to_address"))) {
+                        String description = rs.getString("description");
+                        if (description != null && description.contains("SUBSCRIPTION from: ")) {
+                            try {
+                                String[] parts = description.split("SUBSCRIPTION from: ");
+                                if (parts.length > 1) {
+                                    fromAddress = parts[1].trim();
+                                }
+                            } catch (Exception e) {
+                                // If parsing fails, use the original from_address
+                            }
+                        }
+                    }
+                    row.put("fromWalletAddress", fromAddress);
                     row.put("toWalletAddress", rs.getString("to_address"));
+                    row.put("walletType", rs.getString("from_wallet_type")); // Add wallet type for contract address selection
+                    row.put("userEmail", rs.getString("user_email")); // Add user email
                     rows.add(row);
                 }
+                // Get total count using a separate count query for PostgreSQL
                 long total = 0;
-                try (PreparedStatement stmt2 = conn.prepareStatement("SELECT FOUND_ROWS()")) {
-                    ResultSet rs2 = stmt2.executeQuery(); if (rs2.next()) total = rs2.getLong(1);
+                String countBase = "SELECT COUNT(*) FROM transactions t " +
+                                 "LEFT JOIN usdt_wallets wf ON wf.id = t.wallet_id " +
+                                 "LEFT JOIN usdt_wallets wt ON wt.id = t.to_wallet_id " +
+                                 "LEFT JOIN users u ON u.id = t.user_id " +
+                                 "WHERE 1=1";
+                StringBuilder countSql = new StringBuilder(countBase);
+                if (status != null && !status.isEmpty()) { countSql.append(" AND status = ?"); }
+                if (q != null && !q.isEmpty()) { countSql.append(" AND description LIKE ?"); }
+                try (PreparedStatement stmt2 = conn.prepareStatement(countSql.toString())) {
+                    int idx2 = 1;
+                    if (status != null && !status.isEmpty()) { stmt2.setString(idx2++, status); }
+                    if (q != null && !q.isEmpty()) { stmt2.setString(idx2++, "%" + q + "%"); }
+                    ResultSet rs2 = stmt2.executeQuery();
+                    if (rs2.next()) total = rs2.getLong(1);
                 }
                 return Response.ok(java.util.Map.of("success", true, "data", rows, "total", total, "offset", off, "limit", lim)).build();
             }
@@ -140,16 +210,35 @@ public class BigWaterResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response updateTransaction(@PathParam("id") Long id, java.util.Map<String,Object> body) {
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement("UPDATE transactions SET status = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")) {
+        try {
             String status = (String) body.get("status");
             String description = (String) body.get("description");
-            stmt.setString(1, status);
-            stmt.setString(2, description);
-            stmt.setLong(3, id);
-            int n = stmt.executeUpdate();
-            return Response.ok(java.util.Map.of("success", n>0)).build();
+            
+            System.out.println("BigWaterResource.updateTransaction called: id=" + id + ", status=" + status + ", description=" + description);
+            
+            // Update transaction status using TransactionService to ensure total_pay is updated
+            if (status != null) {
+                Transaction.TransactionStatus transactionStatus = Transaction.TransactionStatus.valueOf(status.toUpperCase());
+                System.out.println("Calling transactionService.updateTransactionStatus with id=" + id + ", status=" + transactionStatus);
+                transactionService.updateTransactionStatus(id, transactionStatus);
+                System.out.println("transactionService.updateTransactionStatus completed");
+            }
+            
+            // Update description if provided
+            if (description != null) {
+                try (Connection conn = dataSource.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement("UPDATE transactions SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")) {
+                    stmt.setString(1, description);
+                    stmt.setLong(2, id);
+                    stmt.executeUpdate();
+                    System.out.println("Updated transaction description for id=" + id);
+                }
+            }
+            
+            return Response.ok(java.util.Map.of("success", true)).build();
         } catch (Exception e) {
+            System.err.println("Error in updateTransaction: " + e.getMessage());
+            e.printStackTrace();
             return Response.status(Response.Status.BAD_REQUEST).entity(java.util.Map.of("success", false, "error", e.getMessage())).build();
         }
     }
@@ -643,32 +732,212 @@ public class BigWaterResource {
                 userId = toWalletOpt.get().getUserId();
             }
 
-            String clientDesc = (String) payload.get("description");
-            String description = (clientDesc != null && !clientDesc.trim().isEmpty())
-                ? clientDesc.trim()
-                : ("SUBSCRIPTION from: " + fromAddress);
-            try (Connection conn = dataSource.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(
-                   "INSERT INTO transactions (wallet_id, user_id, to_wallet_id, amount_usdt, status, description, created_at) VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)",
-                   Statement.RETURN_GENERATED_KEYS)) {
-                // 仅使用 wallet_id 作为来源钱包
-                if (fromWalletId != null) stmt.setLong(1, fromWalletId); else stmt.setNull(1, java.sql.Types.BIGINT);
-                stmt.setLong(2, userId);
-                stmt.setLong(3, toWalletId);
-                stmt.setBigDecimal(4, amount);
-                stmt.setString(5, "PENDING");
-                stmt.setString(6, description);
-                stmt.executeUpdate();
-                ResultSet rs = stmt.getGeneratedKeys();
-                Long id = null;
-                if (rs.next()) id = rs.getLong(1);
-                return Response.status(Response.Status.CREATED)
-                    .entity(Map.of("success", true, "data", Map.of("id", id), "message", "Payment recorded"))
-                    .build();
+            // Extract user description and transaction hash from payload
+            String userDescription = (String) payload.get("description");
+            if (userDescription != null) {
+                userDescription = userDescription.trim();
             }
+            
+            String transactionHash = (String) payload.get("transactionHash");
+            if (transactionHash != null) {
+                transactionHash = transactionHash.trim();
+            }
+            
+            // Create description for the transaction using user's input or default
+            String description = (userDescription != null && !userDescription.isEmpty()) 
+                ? userDescription 
+                : "SUBSCRIPTION from: " + fromAddress;
+            
+            // Create transaction using TransactionService
+            // For DEPOSIT transactions: walletId is the receiving wallet (company), toWalletId is also the receiving wallet
+            // But we need to store the fromAddress in the transaction for proper display
+            com.app6768688.model.Transaction createdTransaction = transactionService.createTransaction(
+                userId, toWalletId, com.app6768688.model.Transaction.TransactionType.DEPOSIT, amount, description, toWalletId
+            );
+            
+            // Store the fromAddress in metadata for proper address display
+            if (fromAddress != null && !fromAddress.trim().isEmpty()) {
+                createdTransaction.setMetadata("{\"fromAddress\":\"" + fromAddress + "\"}");
+                transactionService.updateTransaction(createdTransaction);
+            }
+            
+            // Set transaction hash if provided
+            if (transactionHash != null && !transactionHash.isEmpty()) {
+                createdTransaction.setTransactionHash(transactionHash);
+                // Update the transaction with the hash
+                transactionService.updateTransaction(createdTransaction);
+            }
+            
+            return Response.status(Response.Status.CREATED)
+                .entity(Map.of("success", true, "data", Map.of("id", createdTransaction.getId()), "message", "Payment recorded"))
+                .build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
                 .entity(Map.of("success", false, "error", e.getMessage()))
+                .build();
+        }
+    }
+
+    @Inject
+    @ConfigProperty(name = "bw.polygon.api.key", defaultValue = "")
+    String polygonApiKey;
+    
+    @Inject
+    @ConfigProperty(name = "bw.tron.api.key", defaultValue = "")
+    String tronApiKey;
+    
+    @Inject
+    @ConfigProperty(name = "bw.alchemy.api.key", defaultValue = "")
+    String alchemyApiKey;
+    
+    @Inject
+    @ConfigProperty(name = "bw.moralis.api.key", defaultValue = "")
+    String moralisApiKey;
+
+    @GET
+    @Path("/transactions/verify/test")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response testVerificationService() {
+        try {
+            // Test API connectivity and configuration
+            Map<String, Object> result = new HashMap<>();
+            result.put("polygonApiKey", polygonApiKey != null && !polygonApiKey.isEmpty() ? "Configured" : "Not configured");
+            result.put("tronApiKey", tronApiKey != null && !tronApiKey.isEmpty() ? "Configured" : "Not configured");
+            result.put("alchemyApiKey", alchemyApiKey != null && !alchemyApiKey.isEmpty() ? "Configured" : "Not configured");
+            result.put("moralisApiKey", moralisApiKey != null && !moralisApiKey.isEmpty() ? "Configured" : "Not configured");
+            result.put("polygonUsdtContract", "0xc2132D05D31c914a87C6611C10748AEb04B58e8F");
+            result.put("tronUsdtContract", "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t");
+            
+            // Test a simple API call
+            try {
+                String testUrl = "https://api.polygonscan.com/api?module=proxy&action=eth_blockNumber&apikey=" + polygonApiKey;
+                java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                        .uri(java.net.URI.create(testUrl))
+                        .timeout(java.time.Duration.ofSeconds(10))
+                        .build();
+                
+                java.net.http.HttpResponse<String> response = java.net.http.HttpClient.newHttpClient().send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+                result.put("polygonApiTest", "Status: " + response.statusCode() + ", Response: " + response.body().substring(0, Math.min(100, response.body().length())));
+            } catch (Exception e) {
+                result.put("polygonApiTest", "Error: " + e.getMessage());
+            }
+            
+            return Response.ok(Map.of("success", true, "data", result)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("success", false, "error", e.getMessage()))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/transactions/verify")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response verifyTransaction(Map<String, Object> payload) {
+        try {
+            System.out.println("DEBUG: verifyTransaction called with payload: " + payload);
+            String txHash = (String) payload.get("txHash");
+            String fromAddress = (String) payload.get("fromAddress");
+            String toAddress = (String) payload.get("toAddress");
+            // Handle both String and Number types for amount
+            String amount = payload.get("amount") != null ? payload.get("amount").toString() : null;
+            String chain = (String) payload.get("chain");
+            Long transactionId = null;
+            
+            // Handle transactionId if provided
+            if (payload.get("transactionId") != null) {
+                try {
+                    transactionId = Long.valueOf(payload.get("transactionId").toString());
+                } catch (NumberFormatException e) {
+                    return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("success", false, "error", "Invalid transactionId format"))
+                        .build();
+                }
+            }
+            
+            if (fromAddress == null || fromAddress.trim().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("success", false, "error", "From address is required"))
+                    .build();
+            }
+            
+            if (toAddress == null || toAddress.trim().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("success", false, "error", "To address is required"))
+                    .build();
+            }
+            
+            if (amount == null || amount.trim().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("success", false, "error", "Amount is required"))
+                    .build();
+            }
+            
+            if (chain == null || chain.trim().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("success", false, "error", "Chain is required"))
+                    .build();
+            }
+            
+            com.app6768688.service.TransactionVerificationService.VerificationResult result;
+            
+            // If txHash is provided, verify the specific transaction
+            if (txHash != null && !txHash.trim().isEmpty()) {
+                result = verificationService.verifyTransaction(txHash, fromAddress, toAddress, amount, chain);
+            } else {
+                // If no txHash provided, scan recent blocks for matching transfers
+                System.out.println("DEBUG: Calling scanRecentTransfers with fromAddress=" + fromAddress + ", toAddress=" + toAddress + ", amount=" + amount + ", chain=" + chain);
+                result = verificationService.scanRecentTransfers(fromAddress, toAddress, amount, chain);
+                System.out.println("DEBUG: scanRecentTransfers result: verified=" + result.isVerified() + ", message=" + result.getMessage());
+            }
+            
+            // If verification is successful and transactionId is provided, update transaction status and user total pay
+            if (result.isVerified() && transactionId != null) {
+                try {
+                    // Update transaction status to COMPLETED
+                    transactionService.updateTransactionStatus(transactionId, com.app6768688.model.Transaction.TransactionStatus.COMPLETED);
+                    
+                    // Get transaction details to update user's total pay
+                    try (Connection conn = dataSource.getConnection();
+                         PreparedStatement stmt = conn.prepareStatement("SELECT user_id, amount_usdt FROM transactions WHERE id = ?")) {
+                        stmt.setLong(1, transactionId);
+                        ResultSet rs = stmt.executeQuery();
+                        if (rs.next()) {
+                            Long userId = rs.getLong("user_id");
+                            BigDecimal amountUsdt = rs.getBigDecimal("amount_usdt");
+                            
+                            if (userId != null && amountUsdt != null) {
+                                // Update user's total pay
+                                userService.updateTotalPay(userId, amountUsdt);
+                                System.out.println("Updated user " + userId + " total pay by " + amountUsdt);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // Log the error but don't fail the verification response
+                    System.err.println("Failed to update transaction status or user total pay: " + e.getMessage());
+                }
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", result.isVerified());
+            response.put("verified", result.isVerified());
+            response.put("message", result.getMessage());
+            response.put("details", result.getDetails());
+            response.put("debug", Map.of(
+                "fromAddress", fromAddress,
+                "toAddress", toAddress,
+                "amount", amount,
+                "chain", chain,
+                "txHash", txHash != null ? txHash : "null"
+            ));
+            
+            return Response.ok(response).build();
+            
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity(Map.of("success", false, "error", "Verification failed: " + e.getMessage()))
                 .build();
         }
     }
@@ -1193,12 +1462,45 @@ public class BigWaterResource {
             query.limit = limit;
             query.sortBy = sort;
             query.order = order;
-            query.type = type;
             query.active = active;
             query.q = q;
+            
+            System.out.println("=== getWallets Debug Info ===");
+            System.out.println("type: " + type);
+            System.out.println("active: " + active);
+            System.out.println("q: " + q);
+            System.out.println("offset: " + offset);
+            System.out.println("limit: " + limit);
+            System.out.println("sort: " + sort);
+            System.out.println("order: " + order);
+            
+            // Handle type parameter
+            if ("COMPANY".equalsIgnoreCase(type)) {
+                query.isCompany = true;
+                System.out.println("Set query.isCompany = true");
+            } else if (type != null && !type.isBlank()) {
+                query.type = type;
+                System.out.println("Set query.type = " + type);
+            }
+            
+            System.out.println("Final query - isCompany: " + query.isCompany);
+            System.out.println("Final query - type: " + query.type);
+            System.out.println("Final query - active: " + query.active);
+            System.out.println("Final query - offset: " + query.offset);
+            System.out.println("Final query - limit: " + query.limit);
 
             long total = walletService.countByQuery(query);
             List<UsdtWallet> items = walletService.findByQuery(query);
+            
+            System.out.println("Found " + total + " total wallets, " + items.size() + " items returned");
+            for (UsdtWallet wallet : items) {
+                System.out.println("Wallet: ID=" + wallet.getId() + 
+                    ", Name=" + wallet.getWalletName() + 
+                    ", Address=" + wallet.getWalletAddress() + 
+                    ", Type=" + wallet.getWalletType() + 
+                    ", IsCompany=" + wallet.getIsCompany() + 
+                    ", Active=" + wallet.getIsActive());
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -1255,6 +1557,7 @@ public class BigWaterResource {
             String walletName = (String) walletData.get("walletName");
             String walletTypeStr = (String) walletData.get("walletType");
             Object balanceObj = walletData.get("balance");
+            Object isCompanyObj = walletData.get("isCompany");
 
             Long userId = Long.valueOf(userIdStr);
             
@@ -1268,14 +1571,19 @@ public class BigWaterResource {
             if (balanceObj != null) {
                 initialBalance = new BigDecimal(balanceObj.toString());
             }
-
-            UsdtWallet wallet = walletService.createWallet(userId, walletAddress, walletName, walletType);
             
-            // Set initial balance if provided
+            // Handle isCompany flag
+            Boolean isCompany = false;
+            if (isCompanyObj != null) {
+                isCompany = Boolean.valueOf(isCompanyObj.toString());
+            }
+
+            UsdtWallet wallet = walletService.createWallet(userId, walletAddress, walletName, walletType, isCompany);
+            
+            // Set initial balance if provided (direct update without creating transaction)
             if (initialBalance.compareTo(BigDecimal.ZERO) > 0) {
-                walletService.updateBalance(wallet.getId(), initialBalance);
-                // Refresh wallet data to get updated balance
-                wallet = walletService.findById(wallet.getId()).orElse(wallet);
+                wallet.setBalance(initialBalance);
+                wallet = walletService.updateWallet(wallet);
             }
             
             Map<String, Object> response = new HashMap<>();
@@ -1407,15 +1715,13 @@ public class BigWaterResource {
                 }
             }
 
-            UsdtWallet updatedWallet = walletService.updateWallet(existingWallet);
-            
-            // Update balance if provided
+            // Update balance if provided (direct update without creating transaction)
             if (balanceObj != null) {
                 BigDecimal newBalance = new BigDecimal(balanceObj.toString());
-                walletService.updateBalance(walletId, newBalance);
-                // Refresh wallet data to get updated balance
-                updatedWallet = walletService.findById(walletId).orElse(updatedWallet);
+                existingWallet.setBalance(newBalance);
             }
+            
+            UsdtWallet updatedWallet = walletService.updateWallet(existingWallet);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -1926,8 +2232,9 @@ public class BigWaterResource {
     public Response getTransactionsByUserId(@PathParam("userId") Long userId) {
         // Include legacy records without user_id by looking up user's wallets
         String sql =
-            "SELECT t.id, t.wallet_id, t.to_wallet_id, t.amount_usdt, t.status, t.description, t.created_at, " +
-            "wf.wallet_address AS from_address, wt.wallet_address AS to_address " +
+            "SELECT t.id, t.wallet_id, t.to_wallet_id, t.amount_usdt, t.status, t.description, t.transaction_hash, t.created_at, t.metadata, " +
+            "wf.wallet_address AS from_address, wt.wallet_address AS to_address, " +
+            "wf.wallet_type AS from_wallet_type, wt.wallet_type AS to_wallet_type " +
             "FROM transactions t " +
             "LEFT JOIN usdt_wallets wf ON wf.id = t.wallet_id " +
             "LEFT JOIN usdt_wallets wt ON wt.id = t.to_wallet_id " +
@@ -1950,9 +2257,44 @@ public class BigWaterResource {
                 row.put("amountUsdt", rs.getBigDecimal("amount_usdt"));
                 row.put("status", rs.getString("status"));
                 row.put("description", rs.getString("description"));
+                row.put("transactionHash", rs.getString("transaction_hash"));
                 row.put("createdAt", rs.getTimestamp("created_at"));
-                row.put("fromWalletAddress", rs.getString("from_address"));
+                
+                // Extract fromAddress from metadata if available, otherwise try to extract from description
+                String fromAddress = rs.getString("from_address");
+                String metadata = rs.getString("metadata");
+                if (metadata != null && metadata.contains("\"fromAddress\"")) {
+                    try {
+                        // Simple JSON parsing to extract fromAddress
+                        String[] parts = metadata.split("\"fromAddress\":\"");
+                        if (parts.length > 1) {
+                            String[] endParts = parts[1].split("\"");
+                            if (endParts.length > 0) {
+                                fromAddress = endParts[0];
+                            }
+                        }
+                    } catch (Exception e) {
+                        // If parsing fails, try to extract from description
+                    }
+                }
+                
+                // If metadata parsing failed or no metadata, try to extract from description
+                if (fromAddress == null || fromAddress.equals(rs.getString("to_address"))) {
+                    String description = rs.getString("description");
+                    if (description != null && description.contains("SUBSCRIPTION from: ")) {
+                        try {
+                            String[] parts = description.split("SUBSCRIPTION from: ");
+                            if (parts.length > 1) {
+                                fromAddress = parts[1].trim();
+                            }
+                        } catch (Exception e) {
+                            // If parsing fails, use the original from_address
+                        }
+                    }
+                }
+                row.put("fromWalletAddress", fromAddress);
                 row.put("toWalletAddress", rs.getString("to_address"));
+                row.put("walletType", rs.getString("from_wallet_type")); // Add wallet type for contract address selection
                 rows.add(row);
             }
             return Response.ok(Map.of("success", true, "data", rows, "count", rows.size())).build();
@@ -3193,27 +3535,259 @@ public class BigWaterResource {
         }
     }
 
-    // =====================================================
-    // NEW WALLET API ENDPOINTS
-    // =====================================================
+
+    // ========== COMPANY WALLET MANAGEMENT API ENDPOINTS ==========
 
     @GET
-    @Path("/user/{userId}/wallet")
+    @Path("/company-wallets")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getUserWallet(@PathParam("userId") Long userId) {
+    public Response getAllCompanyWallets() {
         try {
-            Optional<Wallet> walletOpt = walletService.findWalletByUserId(userId);
+            // Deprecated: CompanyWallet table not used. Serve from usdt_wallets with is_company=true
+            com.app6768688.repository.WalletRepository.WalletQuery query = new com.app6768688.repository.WalletRepository.WalletQuery();
+            query.isCompany = true;
+            List<UsdtWallet> items = walletService.findByQuery(query);
+            long total = walletService.countByQuery(query);
+
             Map<String, Object> response = new HashMap<>();
-            
-            if (walletOpt.isPresent()) {
+            response.put("success", true);
+            response.put("data", items);
+            response.put("count", items.size());
+            response.put("totalCount", total);
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @GET
+    @Path("/company-wallets/active")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getActiveCompanyWallets() {
+        try {
+            // Deprecated: CompanyWallet table not used. Serve from usdt_wallets with is_company=true and active=true
+            com.app6768688.repository.WalletRepository.WalletQuery query = new com.app6768688.repository.WalletRepository.WalletQuery();
+            query.isCompany = true;
+            query.active = true;
+            List<UsdtWallet> items = walletService.findByQuery(query);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", items);
+            response.put("count", items.size());
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+
+    @GET
+    @Path("/company-wallets/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getCompanyWallet(@PathParam("id") Long id) {
+        try {
+            // Unified to usdt_wallets: get a company wallet
+            Optional<UsdtWallet> wallet = walletService.findById(id);
+            if (wallet.isPresent() && wallet.get().getIsCompany()) {
+                Map<String, Object> response = new HashMap<>();
                 response.put("success", true);
-                response.put("data", walletOpt.get());
+                response.put("data", wallet.get());
+                return Response.ok(response).build();
             } else {
+                Map<String, Object> response = new HashMap<>();
                 response.put("success", false);
-                response.put("error", "User wallet not found");
+                response.put("error", "Company wallet not found");
                 return Response.status(Response.Status.NOT_FOUND).entity(response).build();
             }
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @POST
+    @Path("/company-wallets")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createCompanyWallet(Map<String, Object> body) {
+        try {
+            // Unified to usdt_wallets: create a company wallet (is_company = true)
+            String walletName = (String) body.get("walletName");
+            String walletAddress = (String) body.get("walletAddress");
+            if (walletAddress == null || walletAddress.isBlank()) {
+                // fallback to 'address' field (used by admin interface)
+                walletAddress = (String) body.get("address");
+            }
+            if (walletAddress == null || walletAddress.isBlank()) {
+                // fallback to legacy fields
+                String tron = (String) body.get("tronAddress");
+                String polygon = (String) body.get("polygonAddress");
+                if (tron != null && !tron.isBlank()) walletAddress = tron;
+                else if (polygon != null && !polygon.isBlank()) walletAddress = polygon;
+                else walletAddress = "COMPANY_" + System.currentTimeMillis();
+            }
+
+            // wallet type optional, default handled in service/DB
+            String walletTypeStr = (String) body.get("walletType");
+            UsdtWallet.WalletType walletType = null;
+            if (walletTypeStr != null && !walletTypeStr.isBlank()) {
+                try {
+                    walletType = UsdtWallet.WalletType.valueOf(walletTypeStr);
+                } catch (IllegalArgumentException ignore) {
+                    walletType = null; // fall back to default
+                }
+            }
+
+            UsdtWallet created = walletService.createWallet(companyUserId, walletAddress,
+                    walletName != null ? walletName : "Company Wallet",
+                    walletType, true);
+
+            // Handle initial balance if provided
+            Object balanceObj = body.get("balance");
+            if (balanceObj != null) {
+                try {
+                    BigDecimal initialBalance = new BigDecimal(balanceObj.toString());
+                    if (initialBalance.compareTo(BigDecimal.ZERO) > 0) {
+                        // Directly update the wallet balance without creating transaction records
+                        created.setBalance(initialBalance);
+                        created = walletService.updateWallet(created);
+                    }
+                } catch (NumberFormatException e) {
+                    // Invalid balance format, ignore and continue with zero balance
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", created);
+            response.put("message", "Company wallet created successfully");
+            return Response.status(Response.Status.CREATED).entity(response).build();
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @PUT
+    @Path("/company-wallets/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updateCompanyWallet(@PathParam("id") Long id, Map<String, Object> body) {
+        try {
+            // Unified to usdt_wallets: update a company wallet
+            Optional<UsdtWallet> existingWalletOpt = walletService.findById(id);
+            if (existingWalletOpt.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Company wallet not found");
+                return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+            }
+
+            UsdtWallet existingWallet = existingWalletOpt.get();
             
+            // Update wallet fields only if provided
+            String walletName = (String) body.get("walletName");
+            if (walletName != null && !walletName.trim().isEmpty()) {
+                existingWallet.setWalletName(walletName);
+            }
+            
+            String walletAddress = (String) body.get("address");
+            if (walletAddress == null || walletAddress.isBlank()) {
+                // fallback to legacy fields
+                String tron = (String) body.get("tronAddress");
+                String polygon = (String) body.get("polygonAddress");
+                if (tron != null && !tron.isBlank()) walletAddress = tron;
+                else if (polygon != null && !polygon.isBlank()) walletAddress = polygon;
+            }
+            if (walletAddress != null && !walletAddress.trim().isEmpty()) {
+                existingWallet.setWalletAddress(walletAddress);
+            }
+            
+            String walletTypeStr = (String) body.get("walletType");
+            if (walletTypeStr != null && !walletTypeStr.trim().isEmpty()) {
+                try {
+                    UsdtWallet.WalletType walletType = UsdtWallet.WalletType.valueOf(walletTypeStr.toUpperCase());
+                    existingWallet.setWalletType(walletType);
+                } catch (IllegalArgumentException iae) {
+                    // ignore invalid type and keep original
+                }
+            }
+            
+            Object balanceObj = body.get("balance");
+            if (balanceObj != null) {
+                BigDecimal newBalance = new BigDecimal(balanceObj.toString());
+                existingWallet.setBalance(newBalance);
+            }
+            
+            Object isActive = body.get("isActive");
+            if (isActive != null) {
+                existingWallet.setIsActive(Boolean.valueOf(isActive.toString()));
+            }
+
+            UsdtWallet updatedWallet = walletService.updateWallet(existingWallet);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", updatedWallet);
+            response.put("message", "Company wallet updated successfully");
+            
+            return Response.ok(response).build();
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @DELETE
+    @Path("/company-wallets/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteCompanyWallet(@PathParam("id") Long id) {
+        try {
+            // Unified to usdt_wallets: delete a company wallet
+            Optional<UsdtWallet> existingWalletOpt = walletService.findById(id);
+            if (existingWalletOpt.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Company wallet not found");
+                return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+            }
+
+            UsdtWallet existingWallet = existingWalletOpt.get();
+            if (!existingWallet.getIsCompany()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Wallet is not a company wallet");
+                return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+            }
+
+            walletService.deleteWallet(id);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Company wallet deleted successfully");
             return Response.ok(response).build();
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
@@ -3224,96 +3798,44 @@ public class BigWaterResource {
     }
 
     @POST
-    @Path("/user/{userId}/wallet")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Path("/company-wallets/{id}/toggle-status")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response createUserWallet(@PathParam("userId") Long userId, 
-                                   Map<String, Object> body) {
+    public Response toggleCompanyWalletStatus(@PathParam("id") Long id) {
         try {
-            String walletName = (String) body.get("walletName");
-            String tronAddress = (String) body.get("tronAddress");
-            String polygonAddress = (String) body.get("polygonAddress");
-            
-            Wallet wallet;
-            if (tronAddress != null || polygonAddress != null) {
-                wallet = walletService.createUserWallet(userId, walletName, tronAddress, polygonAddress);
-            } else {
-                wallet = walletService.createUserWallet(userId, walletName);
-            }
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", wallet);
-            
-            return Response.status(Response.Status.CREATED).entity(response).build();
-        } catch (RuntimeException e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
-        }
-    }
-
-    @PUT
-    @Path("/user/{userId}/wallet/addresses")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response updateWalletAddresses(@PathParam("userId") Long userId, 
-                                        Map<String, Object> body) {
-        try {
-            String tronAddress = (String) body.get("tronAddress");
-            String polygonAddress = (String) body.get("polygonAddress");
-            
-            Wallet wallet = walletService.updateWalletAddresses(userId, tronAddress, polygonAddress);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", wallet);
-            
-            return Response.ok(response).build();
-        } catch (RuntimeException e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
-        }
-    }
-
-    @PUT
-    @Path("/user/{userId}/wallet/address/{network}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response updateWalletAddress(@PathParam("userId") Long userId,
-                                      @PathParam("network") String network,
-                                      Map<String, Object> body) {
-        try {
-            String address = (String) body.get("address");
-            
-            if (address == null || address.trim().isEmpty()) {
+            // Unified to usdt_wallets: toggle company wallet status
+            Optional<UsdtWallet> existingWalletOpt = walletService.findById(id);
+            if (existingWalletOpt.isEmpty()) {
                 Map<String, Object> response = new HashMap<>();
                 response.put("success", false);
-                response.put("error", "Address is required");
+                response.put("error", "Company wallet not found");
+                return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+            }
+
+            UsdtWallet existingWallet = existingWalletOpt.get();
+            if (!existingWallet.getIsCompany()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Wallet is not a company wallet");
                 return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
             }
+
+            // Toggle the active status
+            if (existingWallet.getIsActive()) {
+                walletService.deactivateWallet(id);
+            } else {
+                walletService.activateWallet(id);
+            }
             
-            Wallet wallet = walletService.updateWalletAddress(userId, network, address);
+            // Get the updated wallet
+            UsdtWallet updatedWallet = walletService.findById(id).orElse(existingWallet);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", wallet);
+            response.put("data", updatedWallet);
+            response.put("message", "Company wallet status updated successfully");
             
             return Response.ok(response).build();
-        } catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("error", e.getMessage());
@@ -3327,16 +3849,78 @@ public class BigWaterResource {
     }
 
     @GET
-    @Path("/wallets/new")
+    @Path("/company-wallets/random")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllNewWallets() {
+    public Response getRandomCompanyWallet() {
         try {
-            List<Wallet> wallets = walletService.getAllWallets();
+            // Unified to usdt_wallets: get a random company wallet
+            com.app6768688.repository.WalletRepository.WalletQuery query = new com.app6768688.repository.WalletRepository.WalletQuery();
+            query.isCompany = true;
+            query.active = true;
+            List<UsdtWallet> companyWallets = walletService.findByQuery(query);
+            
+            if (!companyWallets.isEmpty()) {
+                // Get a random wallet from the list
+                Random random = new Random();
+                UsdtWallet companyWallet = companyWallets.get(random.nextInt(companyWallets.size()));
+                
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("data", companyWallet);
+                
+                // Generate QR code for the wallet address
+                Map<String, String> qrCodes = new HashMap<>();
+                try {
+                    if (companyWallet.getWalletAddress() != null) {
+                        qrCodes.put("walletQR", qrCodeService.generateQRCodeBase64(companyWallet.getWalletAddress()));
+                    }
+                    response.put("qrCodes", qrCodes);
+                } catch (Exception qrException) {
+                    // QR code generation failed, but still return wallet data
+                    response.put("qrError", "Failed to generate QR codes: " + qrException.getMessage());
+                }
+                
+                return Response.ok(response).build();
+            } else {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "No active company wallets found");
+                return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+            }
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @GET
+    @Path("/company-wallets/{id}/qr-codes")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getCompanyWalletQRCodes(@PathParam("id") Long id) {
+        try {
+            // Unified to usdt_wallets: get company wallet QR codes
+            Optional<UsdtWallet> walletOpt = walletService.findById(id);
+            
+            if (!walletOpt.isPresent() || !walletOpt.get().getIsCompany()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "Company wallet not found");
+                return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+            }
+            
+            UsdtWallet wallet = walletOpt.get();
+            Map<String, String> qrCodes = new HashMap<>();
+            
+            // Generate QR code for wallet address
+            if (wallet.getWalletAddress() != null) {
+                qrCodes.put("walletQR", qrCodeService.generateQRCodeBase64(wallet.getWalletAddress()));
+            }
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", wallets);
-            response.put("total", wallets.size());
+            response.put("data", qrCodes);
             
             return Response.ok(response).build();
         } catch (Exception e) {
@@ -3344,6 +3928,281 @@ public class BigWaterResource {
             response.put("success", false);
             response.put("error", e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @GET
+    @Path("/company-wallets/grouped")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getCompanyWalletsGrouped() {
+        try {
+            // Unified to usdt_wallets: get company wallets grouped by type
+            com.app6768688.repository.WalletRepository.WalletQuery query = new com.app6768688.repository.WalletRepository.WalletQuery();
+            query.isCompany = true;
+            query.active = true;
+            List<UsdtWallet> wallets = walletService.findByQuery(query);
+            
+            Map<String, List<UsdtWallet>> grouped = new HashMap<>();
+            
+            // Group by wallet type
+            for (UsdtWallet wallet : wallets) {
+                String walletType = wallet.getWalletType() != null ? wallet.getWalletType().name() : "UNKNOWN";
+                grouped.computeIfAbsent(walletType, k -> new ArrayList<>()).add(wallet);
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", grouped);
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @GET
+    @Path("/company-wallets/statistics")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getCompanyWalletStatistics() {
+        try {
+            // Unified to usdt_wallets: get company wallet statistics
+            com.app6768688.repository.WalletRepository.WalletQuery allQuery = new com.app6768688.repository.WalletRepository.WalletQuery();
+            allQuery.isCompany = true;
+            List<UsdtWallet> allWallets = walletService.findByQuery(allQuery);
+            
+            com.app6768688.repository.WalletRepository.WalletQuery activeQuery = new com.app6768688.repository.WalletRepository.WalletQuery();
+            activeQuery.isCompany = true;
+            activeQuery.active = true;
+            List<UsdtWallet> activeWallets = walletService.findByQuery(activeQuery);
+            
+            BigDecimal totalBalance = BigDecimal.ZERO;
+            Map<String, Integer> typeCounts = new HashMap<>();
+            
+            for (UsdtWallet wallet : activeWallets) {
+                if (wallet.getBalance() != null) {
+                    totalBalance = totalBalance.add(wallet.getBalance());
+                }
+                
+                String walletType = wallet.getWalletType() != null ? wallet.getWalletType().name() : "UNKNOWN";
+                typeCounts.put(walletType, typeCounts.getOrDefault(walletType, 0) + 1);
+            }
+            
+            Map<String, Object> statistics = new HashMap<>();
+            statistics.put("totalWallets", allWallets.size());
+            statistics.put("activeWallets", activeWallets.size());
+            statistics.put("inactiveWallets", allWallets.size() - activeWallets.size());
+            statistics.put("totalBalance", totalBalance);
+            statistics.put("typeCounts", typeCounts);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", statistics);
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    // Company Wallet endpoints
+    @GET
+    @Path("/wallets/company")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getCompanyWallets(
+        @QueryParam("offset") Integer offset,
+        @QueryParam("limit") Integer limit,
+        @QueryParam("type") String type
+    ) {
+        try {
+            com.app6768688.repository.WalletRepository.WalletQuery query = new com.app6768688.repository.WalletRepository.WalletQuery();
+            query.offset = offset;
+            query.limit = limit;
+            query.type = type;
+            query.isCompany = true; // Only company wallets
+
+            long total = walletService.countByQuery(query);
+            List<UsdtWallet> items = walletService.findByQuery(query);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", items);
+            response.put("total", total);
+            response.put("count", items.size());
+            response.put("offset", query.offset != null ? query.offset : 0);
+            response.put("limit", query.limit != null ? query.limit : 50);
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(response)
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/wallets/company/random")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getRandomCompanyWallet(@QueryParam("type") String type,
+                                           @QueryParam("qr") @DefaultValue("true") boolean withQr) {
+        try {
+            if (type == null || type.isBlank()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "type is required");
+                return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+            }
+
+            com.app6768688.repository.WalletRepository.WalletQuery query = new com.app6768688.repository.WalletRepository.WalletQuery();
+            query.isCompany = true;
+            query.active = true;
+            query.type = type;
+            query.limit = 200; // cap
+            List<UsdtWallet> items = walletService.findByQuery(query);
+            if (items.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("error", "No company wallet available for type: " + type);
+                return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+            }
+            UsdtWallet chosen = items.get((int) (Math.random() * items.size()));
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("id", chosen.getId());
+            data.put("walletAddress", chosen.getWalletAddress());
+            data.put("walletType", chosen.getWalletType() != null ? chosen.getWalletType().name() : null);
+            data.put("isCompany", chosen.getIsCompany());
+
+            if (withQr) {
+                String qrText = chosen.getWalletAddress();
+                try {
+                    QRCodeWriter qrCodeWriter = new QRCodeWriter();
+                    BitMatrix bitMatrix = qrCodeWriter.encode(qrText, BarcodeFormat.QR_CODE, 256, 256);
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    MatrixToImageWriter.writeToStream(bitMatrix, "PNG", baos);
+                    String base64 = java.util.Base64.getEncoder().encodeToString(baos.toByteArray());
+                    data.put("qrBase64", "data:image/png;base64," + base64);
+                    data.put("qrText", qrText);
+                } catch (WriterException | java.io.IOException e) {
+                    // fallback: only provide text
+                    data.put("qrText", qrText);
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", data);
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+
+    @GET
+    @Path("/wallets/user")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUserWallets(
+        @QueryParam("offset") Integer offset,
+        @QueryParam("limit") Integer limit,
+        @QueryParam("type") String type,
+        @QueryParam("userId") Long userId
+    ) {
+        try {
+            com.app6768688.repository.WalletRepository.WalletQuery query = new com.app6768688.repository.WalletRepository.WalletQuery();
+            query.offset = offset;
+            query.limit = limit;
+            query.type = type;
+            query.userId = userId;
+            query.isCompany = false; // Only user wallets
+
+            long total = walletService.countByQuery(query);
+            List<UsdtWallet> items = walletService.findByQuery(query);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", items);
+            response.put("total", total);
+            response.put("count", items.size());
+            response.put("offset", query.offset != null ? query.offset : 0);
+            response.put("limit", query.limit != null ? query.limit : 50);
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(response)
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/wallet-types")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getWalletTypes() {
+        try {
+            List<Map<String, Object>> walletTypes = new ArrayList<>();
+            
+            // Get all wallet types from UsdtWallet enum
+            for (UsdtWallet.WalletType type : UsdtWallet.WalletType.values()) {
+                Map<String, Object> typeInfo = new HashMap<>();
+                typeInfo.put("value", type.name());
+                typeInfo.put("label", type.name());
+                typeInfo.put("description", getWalletTypeDescription(type));
+                walletTypes.add(typeInfo);
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", walletTypes);
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
+        }
+    }
+    
+    private String getWalletTypeDescription(UsdtWallet.WalletType type) {
+        switch (type) {
+            case POL:
+                return "Polygon网络钱包";
+            case TRX:
+                return "Tron网络钱包";
+            case SOL:
+                return "Solana网络钱包";
+            case BSC:
+                return "币安智能链钱包";
+            case BTC:
+                return "比特币网络钱包";
+            case ETH:
+                return "以太坊网络钱包";
+            case ADA:
+                return "Cardano网络钱包";
+            case AVAX:
+                return "Avalanche网络钱包";
+            case DOT:
+                return "Polkadot网络钱包";
+            case LINK:
+                return "Chainlink网络钱包";
+            default:
+                return type.name();
         }
     }
 }

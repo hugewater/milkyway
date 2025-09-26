@@ -33,6 +33,9 @@ public class UsdtWallet {
     @Column(name = "is_verified", nullable = true)
     private Boolean isVerified;
     
+    @Column(name = "is_company", nullable = false)
+    private Boolean isCompany = false;
+    
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
@@ -50,6 +53,20 @@ public class UsdtWallet {
         this.balance = BigDecimal.ZERO;
         this.isActive = true;
         this.isVerified = false;
+        this.isCompany = false;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+    
+    public UsdtWallet(Long userId, String walletAddress, String walletName, WalletType walletType, Boolean isCompany) {
+        this.userId = userId;
+        this.walletAddress = walletAddress;
+        this.walletName = walletName;
+        this.walletType = walletType;
+        this.balance = BigDecimal.ZERO;
+        this.isActive = true;
+        this.isVerified = false;
+        this.isCompany = isCompany != null ? isCompany : false;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -78,6 +95,9 @@ public class UsdtWallet {
 
     public Boolean getIsVerified() { return isVerified; }
     public void setIsVerified(Boolean isVerified) { this.isVerified = isVerified; }
+
+    public Boolean getIsCompany() { return isCompany; }
+    public void setIsCompany(Boolean isCompany) { this.isCompany = isCompany; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
@@ -109,9 +129,18 @@ public class UsdtWallet {
 
     // Enums
     public enum WalletType {
-        // New types
-        COMPANY, MEMBER, TESTING,
-        // Backward-compatible legacy values (kept to avoid breaking existing rows)
-        MAIN, TRADING, STAKING, REWARDS
+        // Blockchain network types only
+        POL,  // Polygon
+        TRX,  // Tron
+        SOL,  // Solana
+        BSC,  // Binance Smart Chain
+        BTC,  // Bitcoin
+        ETH,  // Ethereum
+        ADA,  // Cardano
+        AVAX, // Avalanche
+        DOT,  // Polkadot
+        LINK, // Chainlink
+        ACT,  // ACT token on Polygon Amoy testnet
+        TTT   // TTT token on TON Nile testnet
     }
 }

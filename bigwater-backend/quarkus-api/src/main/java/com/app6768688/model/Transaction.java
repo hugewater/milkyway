@@ -43,7 +43,7 @@ public class Transaction {
     @Column(name = "related_entity_id")
     private Long relatedEntityId;
     
-    @Column(name = "metadata", columnDefinition = "TEXT")
+    @Column(name = "metadata")
     private String metadata;
     
     @Column(name = "created_at", nullable = false)

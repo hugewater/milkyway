@@ -1,8 +1,7 @@
 package com.app6768688.service;
 
 import com.app6768688.model.Transaction;
-import com.app6768688.model.Wallet;
-import com.app6768688.model.UsdtWallet; // Keep for backward compatibility
+import com.app6768688.model.UsdtWallet;
 import com.app6768688.repository.WalletRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -21,80 +20,17 @@ public class WalletService {
     @Inject
     TransactionService transactionService;
 
-    // NEW WALLET MODEL METHODS
-    
-    @Transactional
-    public Wallet createUserWallet(Long userId, String walletName) {
-        // Check if user already has a wallet
-        Optional<Wallet> existingWallet = findWalletByUserId(userId);
-        if (existingWallet.isPresent()) {
-            throw new RuntimeException("User already has a wallet");
-        }
-
-        String finalWalletName = walletName != null ? walletName : "Primary Wallet";
-        Wallet wallet = new Wallet(userId, finalWalletName);
-        
-        return walletRepository.createWallet(wallet);
-    }
-    
-    @Transactional
-    public Wallet createUserWallet(Long userId, String walletName, String tronAddress, String polygonAddress) {
-        // Check if user already has a wallet
-        Optional<Wallet> existingWallet = findWalletByUserId(userId);
-        if (existingWallet.isPresent()) {
-            throw new RuntimeException("User already has a wallet");
-        }
-
-        String finalWalletName = walletName != null ? walletName : "Primary Wallet";
-        Wallet wallet = new Wallet(userId, finalWalletName, tronAddress, polygonAddress);
-        
-        return walletRepository.createWallet(wallet);
-    }
-
-    public Optional<Wallet> findWalletByUserId(Long userId) {
-        return walletRepository.findWalletByUserId(userId);
-    }
-
-    public Optional<Wallet> findWalletById(Long walletId) {
-        return walletRepository.findWalletById(walletId);
-    }
-
-    @Transactional
-    public Wallet updateWalletAddresses(Long userId, String tronAddress, String polygonAddress) {
-        Optional<Wallet> walletOpt = findWalletByUserId(userId);
-        if (walletOpt.isEmpty()) {
-            throw new RuntimeException("User wallet not found");
-        }
-        
-        Wallet wallet = walletOpt.get();
-        wallet.setTronAddress(tronAddress);
-        wallet.setPolygonAddress(polygonAddress);
-        
-        return walletRepository.updateWallet(wallet);
-    }
-
-    @Transactional
-    public Wallet updateWalletAddress(Long userId, String network, String address) {
-        Optional<Wallet> walletOpt = findWalletByUserId(userId);
-        if (walletOpt.isEmpty()) {
-            throw new RuntimeException("User wallet not found");
-        }
-        
-        Wallet wallet = walletOpt.get();
-        wallet.setAddressByNetwork(network, address);
-        
-        return walletRepository.updateWallet(wallet);
-    }
-
-    public List<Wallet> getAllWallets() {
-        return walletRepository.findAllWallets();
-    }
-
-    // LEGACY WALLET MODEL METHODS (for backward compatibility)
+    // USDT WALLET MODEL METHODS
     
     @Transactional
     public UsdtWallet createWallet(Long userId, String walletAddress, String walletName, 
                                   UsdtWallet.WalletType walletType) {
+        return createWallet(userId, walletAddress, walletName, walletType, false);
+    }
+    
+    @Transactional
+    public UsdtWallet createWallet(Long userId, String walletAddress, String walletName, 
+                                  UsdtWallet.WalletType walletType, Boolean isCompany) {
         
         // Check if wallet address already exists
         if (walletRepository.existsByAddress(walletAddress)) {
@@ -103,9 +39,10 @@ public class WalletService {
 
         // Set default values for nullable fields
         String finalWalletName = walletName != null ? walletName : "Auto-created Wallet";
-        UsdtWallet.WalletType finalWalletType = walletType != null ? walletType : UsdtWallet.WalletType.MAIN;
+        UsdtWallet.WalletType finalWalletType = walletType != null ? walletType : UsdtWallet.WalletType.BTC;
+        Boolean finalIsCompany = isCompany != null ? isCompany : false;
 
-        UsdtWallet wallet = new UsdtWallet(userId, walletAddress, finalWalletName, finalWalletType);
+        UsdtWallet wallet = new UsdtWallet(userId, walletAddress, finalWalletName, finalWalletType, finalIsCompany);
         
         // Ensure default values are set
         if (wallet.getBalance() == null) {
@@ -308,39 +245,39 @@ public class WalletService {
         return walletRepository.countByUserId(userId);
     }
 
-    public List<UsdtWallet> getMainWalletsByUserId(Long userId) {
+    public List<UsdtWallet> getBitcoinWalletsByUserId(Long userId) {
         return walletRepository.findByUserId(userId).stream()
-                .filter(wallet -> wallet.getWalletType() == UsdtWallet.WalletType.MAIN)
+                .filter(wallet -> wallet.getWalletType() == UsdtWallet.WalletType.BTC)
                 .toList();
     }
 
-    public List<UsdtWallet> getTradingWalletsByUserId(Long userId) {
+    public List<UsdtWallet> getEthereumWalletsByUserId(Long userId) {
         return walletRepository.findByUserId(userId).stream()
-                .filter(wallet -> wallet.getWalletType() == UsdtWallet.WalletType.TRADING)
+                .filter(wallet -> wallet.getWalletType() == UsdtWallet.WalletType.ETH)
                 .toList();
     }
 
-    public List<UsdtWallet> getStakingWalletsByUserId(Long userId) {
+    public List<UsdtWallet> getTronWalletsByUserId(Long userId) {
         return walletRepository.findByUserId(userId).stream()
-                .filter(wallet -> wallet.getWalletType() == UsdtWallet.WalletType.STAKING)
+                .filter(wallet -> wallet.getWalletType() == UsdtWallet.WalletType.TRX)
                 .toList();
     }
 
-    public List<UsdtWallet> getRewardWalletsByUserId(Long userId) {
+    public List<UsdtWallet> getPolygonWalletsByUserId(Long userId) {
         return walletRepository.findByUserId(userId).stream()
-                .filter(wallet -> wallet.getWalletType() == UsdtWallet.WalletType.REWARDS)
+                .filter(wallet -> wallet.getWalletType() == UsdtWallet.WalletType.POL)
                 .toList();
     }
 
-    public UsdtWallet getOrCreateMainWallet(Long userId) {
-        List<UsdtWallet> mainWallets = getMainWalletsByUserId(userId);
-        if (!mainWallets.isEmpty()) {
-            return mainWallets.get(0);
+    public UsdtWallet getOrCreateDefaultWallet(Long userId) {
+        List<UsdtWallet> bitcoinWallets = getBitcoinWalletsByUserId(userId);
+        if (!bitcoinWallets.isEmpty()) {
+            return bitcoinWallets.get(0);
         }
         
-        // Create a default main wallet
-        String defaultAddress = "MAIN_" + userId + "_" + System.currentTimeMillis();
-        return createWallet(userId, defaultAddress, "Main Wallet", UsdtWallet.WalletType.MAIN);
+        // Create a default Bitcoin wallet
+        String defaultAddress = "BTC_" + userId + "_" + System.currentTimeMillis();
+        return createWallet(userId, defaultAddress, "Bitcoin Wallet", UsdtWallet.WalletType.BTC);
     }
 
     @Transactional
