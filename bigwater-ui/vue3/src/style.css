@@ -49,6 +49,10 @@ body {
   color: var(--ocean-blue);
 }
 
+.bg-ocean {
+  background-color: var(--ocean-blue);
+}
+
 .text-deep-ocean {
   color: var(--deep-ocean);
 }

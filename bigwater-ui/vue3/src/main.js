@@ -32,6 +32,8 @@ import MyTransactions from './components/user/MyTransactions.vue'
 import AdminAiAgents from './components/admin/AdminAiAgents.vue'
 import AdminAiChats from './components/admin/AdminAiChats.vue'
 import AdminWalletManager from './components/admin/AdminWalletManager.vue'
+import Training from './components/Training.vue'
+import TrainingCommissions from './components/TrainingCommissions.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -62,6 +64,10 @@ const routes = [
   { path: '/admin/ai/agents', component: AdminAiAgents },
   { path: '/admin/ai/chats', component: AdminAiChats },
   { path: '/ai/chats', component: AdminAiChats }
+  ,{ path: '/training', component: Training }
+  ,{ path: '/admin/training', component: Training }
+  ,{ path: '/training/commissions', component: TrainingCommissions }
+  ,{ path: '/admin/training/commissions', component: TrainingCommissions }
 ]
 
 const router = createRouter({

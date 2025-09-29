@@ -60,6 +60,43 @@
           </router-link>
 
           <!-- AI collapsible group moved to bottom (Admin and User) -->
+          <!-- Training collapsible group -->
+          <div class="mt-4">
+            <button
+              @click="toggleTraining"
+              class="w-full flex items-center justify-between px-3 lg:px-4 py-3 text-white/90 hover:bg-white/10 rounded-lg transition-colors"
+              :class="{ 'bg-white/10 text-white': route.path.startsWith(isAdmin.value ? '/admin/training' : '/training') }"
+            >
+              <div class="flex items-center">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0v6m-3 0h6" />
+                </svg>
+                <span class="text-sm font-medium">Training</span>
+              </div>
+              <svg class="w-4 h-4 transform transition-transform" :class="{ 'rotate-90': trainingOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <div v-show="trainingOpen" class="ml-8 mt-1">
+              <router-link
+                :to="isAdmin.value ? '/admin/training' : '/training'"
+                class="block px-3 lg:px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg mb-1"
+                :class="{ 'bg-white/10 text-white': isActiveRoute(isAdmin.value ? '/admin/training' : '/training') }"
+                @click="closeSidebar"
+              >
+                Overview
+              </router-link>
+              <router-link
+                :to="isAdmin.value ? '/admin/training/commissions' : '/training/commissions'"
+                class="block px-3 lg:px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg"
+                :class="{ 'bg-white/10 text-white': isActiveRoute(isAdmin.value ? '/admin/training/commissions' : '/training/commissions') }"
+                @click="closeSidebar"
+              >
+                Commissions
+              </router-link>
+            </div>
+          </div>
+
           <div class="mt-4">
             <button
               @click="toggleAi"
@@ -155,6 +192,7 @@ const route = useRoute()
 
 const sidebarOpen = ref(false)
 const aiOpen = ref(false)
+const trainingOpen = ref(false)
 
 // Admin menu items - Flat items only (exclude AI children)
 const adminMenuItems = computed(() => [
@@ -216,6 +254,10 @@ const pageTitle = computed(() => {
   if (path.includes('/payments')) return 'Payments'
   if (path.includes('/drawings')) return 'Drawings'
   if (path.includes('/admin-manager')) return 'Admin Manager'
+  if (path.startsWith('/admin/training') || path.startsWith('/training')) {
+    if (path.includes('commissions')) return 'Training Commissions'
+    return 'Training'
+  }
   if (path.startsWith('/admin/ai')) return 'AI'
   return 'BigWater'
 })
@@ -253,9 +295,13 @@ const isActiveRoute = (path) => {
 }
 
 const toggleAi = () => { aiOpen.value = !aiOpen.value }
+const toggleTraining = () => { trainingOpen.value = !trainingOpen.value }
 
 // Expand AI group when current route is under it
-onMounted(() => { if (route.path.startsWith('/admin/ai')) aiOpen.value = true })
+onMounted(() => {
+  if (route.path.startsWith('/admin/ai')) aiOpen.value = true
+  if (route.path.startsWith('/admin/training') || route.path.startsWith('/training')) trainingOpen.value = true
+})
 </script>
 
 <style scoped>
