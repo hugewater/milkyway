@@ -1,12 +1,14 @@
 package com.bigwater.service;
 
-import com.bigwater.model.Affiliate;
-import com.bigwater.model.AffiliateLevel;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.logging.Logger;
+
+import com.bigwater.model.Affiliate;
+import com.bigwater.model.AffiliateLevel;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class CommissionTestService {

@@ -1,11 +1,13 @@
 package com.bigwater.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.logging.Logger;
 
 import com.bigwater.model.Affiliate;
 import com.bigwater.model.AffiliateLevel;
+import com.bigwater.model.AffiliatePromotion;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -62,16 +64,29 @@ public class AffiliatePromotionService {
             logger.info(String.format("Promoting affiliate %s from %s to %s", 
                 affiliate.getEmail(), currentLevel, nextLevel));
             
+            // Create promotion record
+            AffiliatePromotion promotion = new AffiliatePromotion(
+                affiliate, currentLevel, nextLevel, AffiliatePromotion.PromotionType.AUTOMATIC);
+            
+            // Set qualification metrics
+            promotion.setDirectReferralsCount(getDirectReferralCount(affiliate.getId()));
+            promotion.setTotalDownlinesCount(getTotalDownlineCount(affiliate.getId()));
+            promotion.setTotalConsumption(BigDecimal.valueOf(affiliate.getTotalConsumption()));
+            
+            // Special handling when becoming President
+            if (nextLevel == AffiliateLevel.PRESIDENT) {
+                promotion.setBecamePresidentIndependent(true);
+                handlePresidentPromotion(affiliate);
+            }
+            
             // Promote the affiliate
             affiliate.setLevel(nextLevel);
             affiliate.setLastPromotionCheck(LocalDateTime.now());
             
-            // Special handling when becoming President
-            if (nextLevel == AffiliateLevel.PRESIDENT) {
-                handlePresidentPromotion(affiliate);
-            }
-            
+            // Persist both records
+            em.persist(promotion);
             em.merge(affiliate);
+            
             return true;
         } else {
             affiliate.setLastPromotionCheck(LocalDateTime.now());

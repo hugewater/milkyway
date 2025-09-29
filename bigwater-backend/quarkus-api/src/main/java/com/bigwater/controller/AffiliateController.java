@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import com.bigwater.service.AffiliatePromotionService;
+import com.bigwater.service.AffiliateTransactionService;
 import com.bigwater.service.CommissionCalculationService;
 import com.bigwater.service.CommissionTestService;
 import com.bigwater.service.ScheduledPromotionService;
@@ -37,6 +38,9 @@ public class AffiliateController {
     
     @Inject
     CommissionTestService testService;
+    
+    @Inject
+    AffiliateTransactionService transactionService;
     
     /**
      * Trigger manual promotion check for all affiliates
@@ -228,6 +232,63 @@ public class AffiliateController {
     }
     
     /**
+     * Record a new affiliate transaction
+     * POST /api/affiliate/transactions/record
+     */
+    @POST
+    @Path("/transactions/record")
+    public Response recordTransaction(TransactionRequest request) {
+        try {
+            com.bigwater.model.AffiliateTransaction transaction = transactionService.recordTransaction(
+                request.affiliateId,
+                request.amount,
+                request.transactionId,
+                request.transactionType,
+                request.description
+            );
+            
+            return Response.ok()
+                .entity(Map.of(
+                    "status", "success",
+                    "message", "Transaction recorded successfully",
+                    "transactionId", transaction.getTransactionId(),
+                    "affiliateId", transaction.getAffiliate().getId()
+                ))
+                .build();
+        } catch (Exception e) {
+            logger.severe("Failed to record transaction: " + e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity(Map.of("status", "error", "message", e.getMessage()))
+                .build();
+        }
+    }
+    
+    /**
+     * Confirm a transaction and trigger commission calculations
+     * POST /api/affiliate/transactions/{transactionId}/confirm
+     */
+    @POST
+    @Path("/transactions/{transactionId}/confirm")
+    public Response confirmTransaction(@PathParam("transactionId") String transactionId) {
+        try {
+            transactionService.confirmTransaction(transactionId);
+            
+            return Response.ok()
+                .entity(Map.of(
+                    "status", "success",
+                    "message", "Transaction confirmed and commissions processed",
+                    "transactionId", transactionId
+                ))
+                .build();
+        } catch (Exception e) {
+            logger.severe("Failed to confirm transaction " + transactionId + ": " + e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity(Map.of("status", "error", "message", e.getMessage()))
+                .build();
+        }
+    }
+    
+    /**
      * Request class for commission calculations
      */
     public static class CommissionRequest {
@@ -240,6 +301,30 @@ public class AffiliateController {
         public CommissionRequest(Long payerAffiliateId, BigDecimal transactionAmount) {
             this.payerAffiliateId = payerAffiliateId;
             this.transactionAmount = transactionAmount;
+        }
+    }
+    
+    /**
+     * Request class for transaction recording
+     */
+    public static class TransactionRequest {
+        public Long affiliateId;
+        public BigDecimal amount;
+        public String transactionId;
+        public com.bigwater.model.AffiliateTransaction.TransactionType transactionType;
+        public String description;
+        
+        // Default constructor for JSON deserialization
+        public TransactionRequest() {}
+        
+        public TransactionRequest(Long affiliateId, BigDecimal amount, String transactionId, 
+                                com.bigwater.model.AffiliateTransaction.TransactionType transactionType, 
+                                String description) {
+            this.affiliateId = affiliateId;
+            this.amount = amount;
+            this.transactionId = transactionId;
+            this.transactionType = transactionType;
+            this.description = description;
         }
     }
 }

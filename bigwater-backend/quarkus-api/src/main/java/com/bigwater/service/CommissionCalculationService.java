@@ -11,6 +11,7 @@ import java.util.logging.Logger;
 
 import com.bigwater.model.Affiliate;
 import com.bigwater.model.AffiliateLevel;
+import com.bigwater.model.Commission;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -205,15 +206,30 @@ public class CommissionCalculationService {
     
     /**
      * Create a commission record
-     * You would need to create a Commission entity for this
      */
     private void createCommissionRecord(Long recipientId, Long sourceAffiliateId, 
                                       BigDecimal amount, String transactionId, 
                                       LocalDateTime createdAt) {
-        // Implementation would create and persist a Commission entity
-        // For now, just log the commission
-        logger.info(String.format("Commission Record: Recipient=%d, Source=%d, Amount=%s, Transaction=%s", 
-            recipientId, sourceAffiliateId, amount, transactionId));
+        Affiliate recipient = em.find(Affiliate.class, recipientId);
+        Affiliate sourceAffiliate = em.find(Affiliate.class, sourceAffiliateId);
+        
+        if (recipient != null && sourceAffiliate != null) {
+            Commission commission = new Commission();
+            commission.setRecipient(recipient);
+            commission.setSourceAffiliate(sourceAffiliate);
+            commission.setAmount(amount);
+            commission.setTransactionId(transactionId);
+            commission.setCommissionType(Commission.CommissionType.GENERATION);
+            commission.setCreatedAt(createdAt);
+            
+            em.persist(commission);
+            
+            logger.info(String.format("Commission Record Created: ID=%d, Recipient=%s, Amount=%s", 
+                commission.getId(), recipient.getEmail(), amount));
+        } else {
+            logger.warning(String.format("Failed to create commission record: Recipient=%d, Source=%d not found", 
+                recipientId, sourceAffiliateId));
+        }
     }
     
     /**
