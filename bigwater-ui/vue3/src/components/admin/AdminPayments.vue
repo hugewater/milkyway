@@ -382,7 +382,7 @@
 <script setup>
 import AppLayout from '../layouts/AppLayout.vue'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { transferBetweenWallets, createWallet, addBalanceToWallet, getWalletsPaged, toggleWalletStatus, deleteWallet, updateWallet } from '../../utils/api.js'
+import { transferBetweenWallets, createWallet, addBalanceToWallet, getWalletsPaged, getActiveCompanyWallets, toggleWalletStatus, deleteWallet, updateWallet } from '../../utils/api.js'
 import apiService from '../../utils/api.js'
 
 const form = ref({ fromWalletId: null, toWalletId: null, amount: '' })
@@ -649,15 +649,32 @@ const submitTransfer = async () => {
 
 const loadCompanyWalletsForPay = async () => {
   try {
-    const resp = await apiService.getWalletsPaged({
-      type: 'COMPANY',
-      active: true,
-      limit: 10
-    })
-    companyWallets.value = resp.data || []
+    console.log('Loading company wallets for pay (primary)')
+    const resp = await apiService.getWalletsPaged({ type: 'COMPANY', active: true, limit: 50 })
+    console.log('getWalletsPaged (for pay) response:', resp)
+    companyWallets.value = resp?.data || []
+
+    if (!companyWallets.value.length) {
+      console.warn('Primary getWalletsPaged returned 0 company wallets for pay; trying fallback')
+      try {
+        const fallback = await getActiveCompanyWallets()
+        console.log('getActiveCompanyWallets (for pay) response:', fallback)
+        companyWallets.value = fallback?.data || []
+      } catch (fbErr) {
+        console.error('Fallback getActiveCompanyWallets failed (for pay):', fbErr)
+        companyWallets.value = []
+      }
+    }
   } catch (e) {
-    console.error('Failed to load company wallets:', e)
-    companyWallets.value = []
+    console.error('Failed to load company wallets (primary) for pay:', e)
+    try {
+      const fallback = await getActiveCompanyWallets()
+      console.log('getActiveCompanyWallets (for pay) after primary error response:', fallback)
+      companyWallets.value = fallback?.data || []
+    } catch (fbErr) {
+      console.error('Fallback getActiveCompanyWallets also failed (for pay):', fbErr)
+      companyWallets.value = []
+    }
   }
 }
 

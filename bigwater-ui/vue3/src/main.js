@@ -2,8 +2,9 @@ import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import './style.css'
 import App from './App.vue'
-import { initializeAuth } from './utils/auth.js'
+import { initializeAuth, isAuthenticated } from './utils/auth.js'
 import { setupRouterGuards } from './utils/router.js'
+import AppLayout from './layouts/AppLayout.vue'
 
 // Import components
 import Home from './components/Home.vue'
@@ -70,9 +71,34 @@ const router = createRouter({
 // Initialize authentication
 initializeAuth()
 
-// Setup router guards
-setupRouterGuards(router)
+// Add navigation guard for /my-wallets
+router.beforeEach((to, from, next) => {
+  console.log('Route navigation:', { to, from })
+  if (to.path === '/my-wallets') {
+    if (!isAuthenticated.value) {
+      console.log('Not authenticated, redirecting to login')
+      next('/login')
+    } else {
+      console.log('Authenticated, proceeding to MyWallets')
+      next()
+    }
+  } else {
+    next()
+  }
+})
 
+// Create Vue app instance
+console.log('Creating Vue app instance')
 const app = createApp(App)
+
+// Register global components
+console.log('Registering AppLayout component')
+app.component('AppLayout', AppLayout)
+
+// Use router
+console.log('Configuring router')
 app.use(router)
+
+// Mount app
+console.log('Mounting app to #app element')
 app.mount('#app')

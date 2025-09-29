@@ -1,13 +1,17 @@
 <template>
   <AppLayout>
     <div class="px-4 lg:px-6 py-6">
-      <div class="flex justify-end mb-4">
-        <button
-          @click="showAddWalletModal = true"
-          class="btn-primary px-4 py-2 rounded-lg"
-        >
-          Create Wallet
-        </button>
+      <div class="flex justify-between items-center mb-4">
+        <h1 class="text-2xl font-semibold text-gray-900">My Wallets</h1>
+        <div class="flex space-x-3 items-center">
+          <ConnectWalletButton />
+          <button
+            @click="showAddWalletModal = true"
+            class="btn-primary px-4 py-2 rounded-lg"
+          >
+            Create Wallet
+          </button>
+        </div>
       </div>
 
       <!-- Main Content -->
@@ -516,12 +520,27 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import AppLayout from '../layouts/AppLayout.vue'
+import { ref, computed, onMounted, onBeforeUnmount, onErrorCaptured } from 'vue'
+import AppLayout from '../../layouts/AppLayout.vue'
+import ConnectWalletButton from '../../components/ConnectWalletButton.vue'
+
+console.log('MyWallets component initializing')
+
+onMounted(() => {
+  console.log('MyWallets mounted')
+})
+
+onErrorCaptured((err, instance, info) => {
+  console.error('Error in MyWallets:', err)
+  console.log('Error instance:', instance)
+  console.log('Error info:', info)
+  return false
+})
 import { getUserId } from '../../utils/auth.js'
 import apiService from '../../utils/api.js'
 import { toggleWalletStatus } from '../../utils/api.js'
 import { USDT_CONTRACTS } from '../../utils/contractAddresses.js'
+import { walletState, WALLET_STATES } from '../../utils/walletConnect.js'
 
 const wallets = ref([])
 const isLoading = ref(false)

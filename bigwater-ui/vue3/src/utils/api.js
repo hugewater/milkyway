@@ -25,22 +25,37 @@ class ApiService {
 
     try {
       const response = await fetch(url, config)
-      let data
+      const status = response.status
+      let data = null
+      let textBody = null
       try {
+        // Try parse JSON first
         data = await response.json()
       } catch (parseErr) {
-        // 非JSON响应
-        data = { success: false, error: `Non-JSON response, status ${response.status}` }
+        // Keep raw text in case it's not JSON
+        try {
+          textBody = await response.text()
+        } catch (tErr) {
+          textBody = null
+        }
+        data = { success: false, error: `Non-JSON response, status ${status}`, raw: textBody }
       }
 
       if (!response.ok) {
-        const message = (data && (data.error || data.message)) || `HTTP error! status: ${response.status}`
-        throw new Error(message)
+        const message = (data && (data.error || data.message)) || `HTTP error! status: ${status}`
+        const err = new Error(message)
+        // attach helpful debug info
+        err.status = status
+        err.response = data
+        throw err
       }
 
+      // Attach status for callers that want it
+      if (data && typeof data === 'object') data.__httpStatus = status
       return data
     } catch (error) {
       console.error('API request failed:', error)
+      // Re-throw with any attached status/response to help calling code
       throw error
     }
   }

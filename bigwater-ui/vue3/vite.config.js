@@ -6,6 +6,11 @@ export default defineConfig({
   optimizeDeps: {
     include: ['@antv/g6']
   },
+  resolve: {
+    alias: {
+      '@': '/src'
+    }
+  },
   server: {
     port: 5175,
     proxy: {

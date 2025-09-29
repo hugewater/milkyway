@@ -1454,6 +1454,7 @@ public class BigWaterResource {
         @QueryParam("order") String order,
         @QueryParam("type") String type,
         @QueryParam("active") Boolean active,
+        @QueryParam("isCompany") Boolean isCompanyParam,
         @QueryParam("q") String q
     ) {
         try {
@@ -1474,10 +1475,11 @@ public class BigWaterResource {
             System.out.println("sort: " + sort);
             System.out.println("order: " + order);
             
-            // Handle type parameter
-            if ("COMPANY".equalsIgnoreCase(type)) {
+            // Handle type parameter and explicit isCompany param
+            if (Boolean.TRUE.equals(isCompanyParam) || "COMPANY".equalsIgnoreCase(type)) {
+                // Force company wallet query when either isCompany=true or type=COMPANY
                 query.isCompany = true;
-                System.out.println("Set query.isCompany = true");
+                System.out.println("Set query.isCompany = true (via type or isCompany param)");
             } else if (type != null && !type.isBlank()) {
                 query.type = type;
                 System.out.println("Set query.type = " + type);

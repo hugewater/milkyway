@@ -679,6 +679,10 @@
                   {{ cw.walletName || 'Company Wallet' }} ({{ cw.walletAddress?.slice(0, 8) }}...) - {{ cw.walletType }}
                 </option>
               </select>
+              <div v-if="transactionForm.toAddress" class="mt-2 text-sm text-gray-700 break-all">
+                <strong>Selected Company Wallet Address:</strong>
+                <div class="mt-1 text-sm text-gray-900 break-all">{{ transactionForm.toAddress }}</div>
+              </div>
               <p class="text-xs text-gray-500 mt-1">Funds will be paid to the selected company wallet.</p>
             </div>
             <div>
@@ -720,6 +724,10 @@
                   {{ cw.walletName || 'Company Wallet' }} ({{ cw.walletAddress?.slice(0, 8) }}...) - {{ cw.walletType }}
                 </option>
               </select>
+              <div v-if="transactionForm.toAddress" class="mt-2 text-sm text-gray-700 break-all">
+                <strong>Selected Company Wallet Address:</strong>
+                <div class="mt-1 text-sm text-gray-900 break-all">{{ transactionForm.toAddress }}</div>
+              </div>
               <p class="text-xs text-gray-500 mt-1">Funds will be withdrawn to the selected company wallet.</p>
             </div>
             <div>
@@ -1148,9 +1156,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getWalletsByUserId, transferBetweenWallets, withdrawFromWallet, getWallets, createWallet, getUserNetwork, updateUser, createUser, getUsersPaged, addDownline, getTransactionsByWalletId, getUserById, getUserStats, createUserWallet, getUserWallet, updateWalletAddresses } from '../../utils/api.js'
+import { getWalletsByUserId, transferBetweenWallets, withdrawFromWallet, getWallets, getWalletsPaged, getActiveCompanyWallets, createWallet, getUserNetwork, updateUser, createUser, getUsersPaged, addDownline, getTransactionsByWalletId, getUserById, getUserStats, createUserWallet, getUserWallet, updateWalletAddresses } from '../../utils/api.js'
 import AppLayout from '../layouts/AppLayout.vue'
 import NetworkGraph from './NetworkGraph.vue'
 import UserNetworkGraph from '../user/UserNetworkGraph.vue'
@@ -1749,6 +1757,26 @@ const getSelectedCompanyWallet = () => {
   return companyWallets.value.find(cw => cw.id === transactionForm.value.toWalletId)
 }
 
+ // Watch selected company wallet id and update the displayed address
+ watch(() => transactionForm.value.toWalletId, (newVal) => {
+   const cw = getSelectedCompanyWallet()
+   if (cw && cw.walletAddress) {
+     transactionForm.value.toAddress = cw.walletAddress
+     // Also update the fromWalletAddress to match the selected company wallet's address
+     transactionForm.value.fromWalletAddress = cw.walletAddress
+   } else {
+     transactionForm.value.toAddress = ''
+     transactionForm.value.fromWalletAddress = ''
+   }
+ })// Keep the From Wallet Address in sync when a wallet is selected
+watch(selectedWallet, (newWallet) => {
+  if (!newWallet) return
+  // Only update the input when a modal is open to avoid overwriting manual edits elsewhere
+  if (showPayModal.value || showWithdrawModal.value) {
+    transactionForm.value.fromWalletAddress = newWallet.walletAddress || ''
+  }
+})
+
 // Helper function to load user wallets using new API
 const loadUserWallets = async (userId) => {
   try {
@@ -1979,7 +2007,7 @@ const openPayModal = async (wallet) => {
     }
   } else {
     console.error('No company wallets available')
-    transactionMsg.value = 'No company wallets available for payment.'
+    transactionMsg.value = 'No company wallets available for payment. Try creating a company wallet under Admin → Payments → Create Wallet.'
     transactionOk.value = false
   }
   
@@ -2074,49 +2102,40 @@ const submitPay = async () => {
 
 const loadCompanyWallets = async () => {
   try {
-    console.log('=== Frontend: Loading company wallets ===')
-    console.log('Calling getWalletsPaged with params:', { type: 'COMPANY', active: true })
-    
-    // 添加超时和错误处理
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10秒超时
-    
-    const resp = await getWalletsPaged({ type: 'COMPANY', active: true })
-    clearTimeout(timeoutId)
-    
-    console.log('API Response:', resp)
-    console.log('Response success:', resp?.success)
-    console.log('Response data:', resp?.data)
-    console.log('Response data type:', typeof resp?.data)
-    console.log('Response data length:', resp?.data?.length)
-    
-    companyWallets.value = resp.data || []
-    console.log('Loaded company wallets:', companyWallets.value)
-    console.log('Company wallets count:', companyWallets.value.length)
-    
-    if (companyWallets.value.length === 0) {
-      console.warn('No company wallets found!')
-      console.log('Full response:', JSON.stringify(resp, null, 2))
+    console.log('=== Frontend: Loading company wallets (primary: /wallets?type=COMPANY&active=true) ===')
+    const resp = await getWalletsPaged({ type: 'COMPANY', active: true, limit: 200 })
+    console.log('getWalletsPaged response:', resp)
+
+    companyWallets.value = resp?.data || []
+    console.log('Loaded company wallets (via getWalletsPaged):', companyWallets.value.length)
+
+    // If primary call returned nothing, fallback to /company-wallets/active which directly queries is_company = true
+    if (!companyWallets.value.length) {
+      console.warn('getWalletsPaged returned 0 company wallets; trying fallback getActiveCompanyWallets() (explicit is_company query)')
+      try {
+        const fallback = await getActiveCompanyWallets()
+        console.log('getActiveCompanyWallets response:', fallback)
+        companyWallets.value = fallback?.data || []
+        console.log('Loaded company wallets (via getActiveCompanyWallets):', companyWallets.value.length)
+      } catch (fbErr) {
+        console.error('Fallback getActiveCompanyWallets failed:', fbErr)
+      }
     }
-    
-    companyWallets.value.forEach((wallet, index) => {
-      console.log(`Company wallet ${index + 1}:`, {
-        id: wallet.id,
-        name: wallet.walletName,
-        address: wallet.walletAddress,
-        type: wallet.walletType,
-        isCompany: wallet.isCompany,
-        active: wallet.isActive
-      })
-    })
+
+    if (!companyWallets.value.length) {
+      console.warn('No company wallets found after fallback')
+    }
   } catch (e) {
-    console.error('Failed to load company wallets:', e)
-    console.error('Error details:', {
-      message: e.message,
-      stack: e.stack,
-      name: e.name
-    })
-    companyWallets.value = []
+    console.error('Failed to load company wallets (primary):', e)
+    console.error('Attempting fallback to getActiveCompanyWallets()')
+    try {
+      const fallback = await getActiveCompanyWallets()
+      console.log('getActiveCompanyWallets response after primary error:', fallback)
+      companyWallets.value = fallback?.data || []
+    } catch (fbErr) {
+      console.error('Fallback getActiveCompanyWallets also failed:', fbErr)
+      companyWallets.value = []
+    }
   }
 }
 

@@ -8,16 +8,33 @@ export const token = ref(localStorage.getItem('token') || null)
 
 // Initialize authentication state
 export function initializeAuth() {
+  console.log('Initializing auth')
   const storedToken = localStorage.getItem('token')
   const storedUser = localStorage.getItem('user')
   
   if (storedToken && storedUser) {
-    token.value = storedToken
-    currentUser.value = JSON.parse(storedUser)
-    isAuthenticated.value = true
-    
-    // Validate token with backend
-    validateStoredToken(storedToken)
+    try {
+      token.value = storedToken
+      currentUser.value = JSON.parse(storedUser)
+      isAuthenticated.value = true
+      console.log('Auth initialized with stored credentials')
+      
+      // Validate token with backend
+      validateStoredToken(storedToken)
+    } catch (err) {
+      console.error('Error initializing auth:', err)
+      // Clear potentially corrupted data
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      token.value = null
+      currentUser.value = null
+      isAuthenticated.value = false
+    }
+  } else {
+    console.log('No stored credentials found')
+    token.value = null
+    currentUser.value = null
+    isAuthenticated.value = false
   }
 }
 
