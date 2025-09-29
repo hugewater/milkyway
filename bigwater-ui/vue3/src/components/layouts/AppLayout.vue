@@ -34,6 +34,10 @@
 
       <!-- Navigation -->
       <nav class="mt-6 overflow-y-auto max-h-[calc(100vh-120px)]">
+        <!-- Sidebar Avatar / Profile quick access -->
+        <div class="px-4 lg:px-6 mb-4">
+          <ProfileMenu compact wrapperClass="w-full flex justify-start" />
+        </div>
         <div class="px-4 lg:px-6 mb-6">
           <div class="text-xs uppercase tracking-wider text-white/60 mb-3">
             {{ isAdmin.value ? 'Management' : 'Dashboard' }}
@@ -122,54 +126,12 @@
           </div>
           
           <div class="flex items-center space-x-2 lg:space-x-4">
-
-            <!-- Language Selector (hidden on mobile) -->
             <select v-if="!isAdmin.value" class="hidden md:block border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="en">English</option>
               <option value="es">Español</option>
               <option value="fr">Français</option>
             </select>
-
-            <!-- User menu -->
-            <div class="relative user-menu-container">
-              <button
-                @click="userMenuOpen = !userMenuOpen"
-                class="flex items-center space-x-2 text-gray-700 hover:text-ocean"
-              >
-                <div class="w-8 h-8 bg-ocean rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  {{ userInitials }}
-                </div>
-                <span class="text-sm font-medium hidden sm:block">{{ userName }}</span>
-                <svg class="w-4 h-4 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </button>
-
-              <!-- Dropdown menu -->
-              <div
-                v-if="userMenuOpen"
-                class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
-              >
-                <router-link 
-                  to="/my-account" 
-                  @click="userMenuOpen = false"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  My Account
-                </router-link>
-                <router-link 
-                  to="/settings" 
-                  @click="userMenuOpen = false"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  Settings
-                </router-link>
-                <div class="border-t border-gray-200"></div>
-                <button @click="logout" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50">
-                  Logout
-                </button>
-              </div>
-            </div>
+            <ProfileMenu wrapperClass="" />
           </div>
         </div>
       </header>
@@ -186,12 +148,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { currentUser, isAuthenticated, logout as authLogout, isAdmin as authIsAdmin } from '../../utils/auth.js'
+import ProfileMenu from '../../components/ProfileMenu.vue'
 
 const router = useRouter()
 const route = useRoute()
 
 const sidebarOpen = ref(false)
-const userMenuOpen = ref(false)
 const aiOpen = ref(false)
 
 // Admin menu items - Flat items only (exclude AI children)
@@ -239,20 +201,6 @@ const flatMenuItems = computed(() => {
   return isAdminContext ? adminMenuItems.value : userMenuItems.value
 })
 
-const userName = computed(() => {
-  if (!currentUser.value) return 'User'
-  return currentUser.value.firstName && currentUser.value.lastName 
-    ? `${currentUser.value.firstName} ${currentUser.value.lastName}`
-    : currentUser.value.email || 'User'
-})
-
-const userInitials = computed(() => {
-  if (!currentUser.value) return 'U'
-  if (currentUser.value.firstName && currentUser.value.lastName) {
-    return `${currentUser.value.firstName[0]}${currentUser.value.lastName[0]}`.toUpperCase()
-  }
-  return currentUser.value.email ? currentUser.value.email[0].toUpperCase() : 'U'
-})
 
 const pageTitle = computed(() => {
   const path = route.path
@@ -273,7 +221,7 @@ const pageTitle = computed(() => {
 })
 
 const pageSubtitle = computed(() => {
-  if (isAdmin.value) return `Welcome back, ${userName.value}`
+  if (isAdmin.value) return 'Welcome back' // Removed dynamic userName to avoid duplicate logic; ProfileMenu shows name
   return 'Digital Weekly Journal'
 })
 
@@ -283,14 +231,10 @@ const toggleSidebar = () => {
 
 const closeSidebar = () => {
   sidebarOpen.value = false
-  userMenuOpen.value = false
+  // user menu handled inside ProfileMenu
 }
 
-const logout = () => {
-  authLogout()
-  userMenuOpen.value = false
-  router.push('/login')
-}
+const logout = () => { authLogout(); router.push('/login') }
 
 // Close dropdown when clicking outside
 const closeUserMenu = () => {
@@ -311,15 +255,7 @@ const isActiveRoute = (path) => {
 const toggleAi = () => { aiOpen.value = !aiOpen.value }
 
 // Expand AI group when current route is under it
-onMounted(() => {
-  document.addEventListener('click', (event) => {
-    const userMenu = document.querySelector('.user-menu-container')
-    if (userMenu && !userMenu.contains(event.target)) {
-      userMenuOpen.value = false
-    }
-  })
-  if (route.path.startsWith('/admin/ai')) aiOpen.value = true
-})
+onMounted(() => { if (route.path.startsWith('/admin/ai')) aiOpen.value = true })
 </script>
 
 <style scoped>

@@ -3,20 +3,28 @@
     <!-- Navigation Header -->
     <nav class="bg-white/90 backdrop-blur-sm shadow-lg sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
+        <div class="flex justify-between items-center h-14 sm:h-16">
           <div class="flex items-center">
             <div class="flex-shrink-0">
-              <h1 class="text-2xl font-bold text-ocean">BigWater</h1>
-              <p class="text-xs text-forest-green">Digital Weekly Journal</p>
+              <h1 class="text-lg sm:text-2xl font-bold text-ocean">BigWater</h1>
+              <p class="text-xs text-forest-green hidden xs:block">Digital Weekly Journal</p>
             </div>
           </div>
-          <div class="flex items-center space-x-4">
-            <router-link to="/login" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium">
-              Login
-            </router-link>
-            <router-link to="/signup" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium">
-              Sign Up
-            </router-link>
+          <div class="flex items-center space-x-2 sm:space-x-4">
+            <!-- Wallet Connection removed from Home (only available on My Wallets) -->
+            
+            <!-- Authenticated User Menu Component -->
+            <ProfileMenu v-if="isAuthenticated" />
+            
+            <!-- Login/Signup buttons (only when not authenticated) -->
+            <div v-else class="flex items-center space-x-2 sm:space-x-4">
+              <router-link to="/login" class="btn-primary px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium">
+                Login
+              </router-link>
+              <router-link to="/signup" class="btn-primary px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium">
+                Sign Up
+              </router-link>
+            </div>
           </div>
         </div>
       </div>
@@ -24,20 +32,20 @@
 
     <!-- Hero Section -->
     <div class="relative overflow-hidden">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
         <div class="text-center">
-          <h2 class="text-xl md:text-4xl font-bold text-deep-ocean mb-6">
+          <h2 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-deep-ocean mb-4 sm:mb-6">
             Welcome to BigWater
             <span class="block text-ocean">Digital Weekly Journal</span>
           </h2>
-          <p class="text-base md:text-lg text-gray-600 mb-8 max-w-3xl mx-auto">
+          <p class="text-sm sm:text-base md:text-lg text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto px-4">
             Enrich yourself with weekly journals!
           </p>
-          <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <router-link to="/signup" class="btn-primary px-8 py-3 rounded-xl text-lg font-semibold">
+          <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
+            <router-link to="/signup" class="btn-primary px-6 sm:px-8 py-3 rounded-xl text-base sm:text-lg font-semibold">
               Start Your Journey
             </router-link>
-            <button @click="scrollToFeatures" class="btn-primary px-8 py-3 rounded-xl text-lg font-semibold">
+            <button @click="scrollToFeatures" class="btn-primary px-6 sm:px-8 py-3 rounded-xl text-base sm:text-lg font-semibold">
               Learn More
             </button>
           </div>
@@ -46,27 +54,27 @@
     </div>
 
     <!-- Features Section -->
-    <div ref="featuresSection" class="py-20 bg-white/50">
+    <div ref="featuresSection" class="py-12 sm:py-16 lg:py-20 bg-white/50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-16">
-          <h2 class="text-3xl md:text-4xl font-bold text-deep-ocean mb-4">
+        <div class="text-center mb-12 sm:mb-16">
+          <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-deep-ocean mb-3 sm:mb-4">
             Why Choose BigWater?
           </h2>
-          <p class="text-xl text-gray-600">
+          <p class="text-base sm:text-lg md:text-xl text-gray-600 px-4">
             Experience the future life with ubiquitious AI!
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           <!-- Feature 1 -->
-          <div class="card p-8 rounded-2xl text-center">
-            <div class="w-16 h-16 ocean-blue rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="card p-6 sm:p-8 rounded-2xl text-center">
+            <div class="w-12 h-12 sm:w-16 sm:h-16 ocean-blue rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
               </svg>
             </div>
-            <h3 class="text-xl font-bold text-deep-ocean mb-4">Health</h3>
-            <p class="text-gray-600">Discover how AI-powered diagnostics, personalized medicine, and wearable technology are helping us stay younder and healthier.</p>
+            <h3 class="text-lg sm:text-xl font-bold text-deep-ocean mb-3 sm:mb-4">Health</h3>
+            <p class="text-sm sm:text-base text-gray-600">Discover how AI-powered diagnostics, personalized medicine, and wearable technology are helping us stay younger and healthier.</p>
           </div>
 
           <!-- Feature 2 -->
@@ -175,11 +183,44 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { isAuthenticated, currentUser, logout } from '../utils/auth.js'
+import ProfileMenu from './ProfileMenu.vue'
 
+const router = useRouter()
 const featuresSection = ref(null)
+// Removed local dropdown state in favor of reusable component
+
+// Computed properties for user display
+const userName = computed(() => {
+  if (!currentUser.value) return 'User'
+  if (currentUser.value.firstName && currentUser.value.lastName) {
+    return `${currentUser.value.firstName} ${currentUser.value.lastName}`
+  }
+  return currentUser.value.email || 'User'
+})
+
+const userInitials = computed(() => {
+  if (!currentUser.value) return 'U'
+  if (currentUser.value.firstName && currentUser.value.lastName) {
+    return `${currentUser.value.firstName[0]}${currentUser.value.lastName[0]}`.toUpperCase()
+  }
+  return currentUser.value.email ? currentUser.value.email[0].toUpperCase() : 'U'
+})
 
 const scrollToFeatures = () => {
   featuresSection.value?.scrollIntoView({ behavior: 'smooth' })
+}
+
+// Handle logout
+async function handleLogout() {
+  try {
+    await logout()
+    showProfileMenu.value = false
+    router.push('/login')
+  } catch (error) {
+    console.error('Logout failed:', error)
+  }
 }
 </script>

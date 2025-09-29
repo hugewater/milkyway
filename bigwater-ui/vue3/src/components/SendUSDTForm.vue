@@ -1,48 +1,52 @@
 <template>
-  <div class="border rounded-lg p-4 space-y-4 bg-white shadow-sm">
-    <h3 class="text-lg font-semibold text-gray-800">Send USDT to Company Wallet</h3>
+  <div class="border rounded-lg p-3 sm:p-4 lg:p-6 space-y-4 bg-white shadow-sm">
+    <h3 class="text-base sm:text-lg font-semibold text-gray-800">Send USDT to Company Wallet</h3>
 
     <div v-if="!isConnected" class="p-3 bg-yellow-50 text-yellow-800 rounded text-sm">
       Connect a supported EVM wallet first.
     </div>
 
-    <form @submit.prevent="submit" class="space-y-3" v-else>
-      <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1">From</label>
-        <div class="px-3 py-2 bg-gray-100 rounded text-sm font-mono break-all">{{ walletState.address }}</div>
+    <form @submit.prevent="submit" class="space-y-4" v-else>
+      <div class="space-y-2">
+        <label class="block text-xs sm:text-sm font-medium text-gray-600">From</label>
+        <div class="px-3 py-2 bg-gray-50 rounded text-xs sm:text-sm font-mono break-all border">{{ walletState.address }}</div>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1">Company Wallet (Destination)</label>
-        <input v-model="destination" type="text" class="input-text w-full" placeholder="0x..." required />
+      <div class="space-y-2">
+        <label class="block text-xs sm:text-sm font-medium text-gray-600">Company Wallet (Destination)</label>
+        <input v-model="destination" type="text" class="input-text" placeholder="0x..." required />
       </div>
 
-      <div class="flex items-end space-x-3">
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-600 mb-1">Amount (USDT)</label>
-          <input v-model="amount" type="text" inputmode="decimal" class="input-text w-full" placeholder="0.0" required />
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <label class="block text-xs sm:text-sm font-medium text-gray-600">Amount (USDT)</label>
+          <button type="button" @click="fillMax" class="text-xs text-indigo-600 hover:underline px-2 py-1" :disabled="loading">MAX</button>
         </div>
-        <button type="button" @click="fillMax" class="text-xs text-indigo-600 hover:underline" :disabled="loading">MAX</button>
+        <input v-model="amount" type="text" inputmode="decimal" class="input-text" placeholder="0.0" required />
       </div>
 
       <div class="text-xs text-gray-500" v-if="balance !== null">
         Balance: <span class="font-mono">{{ balance }}</span> USDT
       </div>
 
-      <div v-if="error" class="p-2 bg-red-100 text-red-700 text-sm rounded">{{ error }}</div>
-      <div v-if="txHash && !confirmed" class="p-2 bg-blue-50 text-blue-700 text-sm rounded">
-        Pending: <a :href="explorerTxUrl" target="_blank" class="underline">{{ shortHash }}</a>
+      <!-- Status Messages - Mobile optimized -->
+      <div v-if="error" class="p-3 bg-red-50 text-red-700 text-xs sm:text-sm rounded border-l-4 border-red-400">{{ error }}</div>
+      <div v-if="txHash && !confirmed" class="p-3 bg-blue-50 text-blue-700 text-xs sm:text-sm rounded border-l-4 border-blue-400">
+        Pending: <a :href="explorerTxUrl" target="_blank" class="underline break-all">{{ shortHash }}</a>
       </div>
-      <div v-if="confirmed" class="p-2 bg-green-100 text-green-700 text-sm rounded">
-        Confirmed: <a :href="explorerTxUrl" target="_blank" class="underline">{{ shortHash }}</a>
+      <div v-if="confirmed" class="p-3 bg-green-50 text-green-700 text-xs sm:text-sm rounded border-l-4 border-green-400">
+        Confirmed: <a :href="explorerTxUrl" target="_blank" class="underline break-all">{{ shortHash }}</a>
       </div>
 
-      <div class="flex items-center space-x-2">
-        <button type="submit" class="btn-primary px-4 py-2 rounded" :disabled="loading || !canSend">
+      <!-- Action Buttons - Mobile stacked -->
+      <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <button type="submit" class="flex-1 sm:flex-initial btn-primary px-4 py-3 sm:py-2 rounded text-sm sm:text-base font-medium" :disabled="loading || !canSend">
           <span v-if="loading" class="loading-spinner mr-2"></span>
           {{ loading ? 'Sending...' : 'Send USDT' }}
         </button>
-        <button v-if="txHash && !confirmed" type="button" @click="refreshStatus" class="text-sm text-indigo-600 hover:underline" :disabled="loading">Refresh</button>
+        <button v-if="txHash && !confirmed" type="button" @click="refreshStatus" class="px-4 py-2 text-sm text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded border border-indigo-200" :disabled="loading">
+          Refresh Status
+        </button>
       </div>
     </form>
   </div>

@@ -11,8 +11,9 @@
             @change="updateLanguage"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="en">English</option>
-            <option value="zh">中文 (Chinese)</option>
+            <option v-for="lang in languages" :key="lang.code" :value="lang.code">
+              {{ lang.name }}
+            </option>
           </select>
           <p class="text-sm text-gray-600 mt-2">{{ t('settings.language.description') }}</p>
         </div>
@@ -181,12 +182,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import AppLayout from '../layouts/AppLayout.vue'
-import { t, setLanguage, getCurrentLanguage } from '../../utils/i18n.js'
+import { t, setLanguage, getCurrentLanguage, availableLanguages } from '../../utils/i18n.js'
 
 const settings = ref({
-  language: 'en',
+  language: 'en-US',
   emailNotifications: true,
   smsNotifications: false,
   pushNotifications: true,
@@ -208,7 +209,10 @@ const loadSettings = () => {
   }
   
   // Set language from settings
-  settings.value.language = getCurrentLanguage()
+  // Map legacy simple codes (en, zh) to new extended codes if needed
+  const current = getCurrentLanguage()
+  const legacyMap = { 'en': 'en-US', 'zh': 'zh-CN' }
+  settings.value.language = legacyMap[current] || current
 }
 
 const updateSettings = () => {
@@ -218,8 +222,11 @@ const updateSettings = () => {
 }
 
 const updateLanguage = () => {
-  // Update the language in the i18n system
-  setLanguage(settings.value.language)
+  // Update the language (reduce region to base when only base translations exist)
+  const base = settings.value.language.split('-')[0]
+  // If we don't have region-specific translations yet, fall back to base (en / zh)
+  const supported = ['en', 'zh']
+  setLanguage(supported.includes(base) ? base : 'en')
   
   // Save settings
   updateSettings()
@@ -245,4 +252,7 @@ const clearCache = () => {
     alert(t('message.cacheCleared'))
   }
 }
+
+// Computed list of languages
+const languages = computed(() => availableLanguages)
 </script>

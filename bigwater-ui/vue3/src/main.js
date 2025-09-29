@@ -48,6 +48,7 @@ const routes = [
   { path: '/certificates', component: Certificates },
   { path: '/my-transactions', component: MyTransactions },
   { path: '/my-account', component: MyAccount },
+  { path: '/profile', component: MyAccount }, // Add profile route pointing to MyAccount
   { path: '/settings', component: Settings },
   { path: '/admin/journals', component: () => import('./components/admin/AdminJournals.vue') },
   { path: '/admin/rewards', component: AdminRewards },

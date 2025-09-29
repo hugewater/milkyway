@@ -1,28 +1,33 @@
 <template>
   <AppLayout>
-    <div class="p-4 lg:p-6">
-        <!-- Welcome section -->
-        <div class="mb-8 card p-6 rounded-2xl">
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <h2 class="text-xl font-bold text-deep-ocean mb-2">Welcome back, {{ userName }}!</h2>
-              <div class="flex items-center space-x-4">
-                <div class="flex items-center space-x-2">
-                  <span class="text-2xl">{{ userLevel.icon }}</span>
+    <div class="p-3 sm:p-4 lg:p-6">
+        <!-- Welcome section - Mobile responsive -->
+        <div class="mb-6 sm:mb-8 card p-4 sm:p-6 rounded-2xl">
+          <div class="space-y-4 sm:space-y-0 sm:flex sm:items-start sm:justify-between">
+            <!-- Left side - User info -->
+            <div class="space-y-3">
+              <h2 class="text-lg sm:text-xl font-bold text-deep-ocean">Welcome back, {{ userName }}!</h2>
+              <div class="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-6">
+                <div class="flex items-center space-x-3">
+                  <span class="text-xl sm:text-2xl">{{ userLevel.icon }}</span>
                   <div>
-                    <p class="font-semibold text-deep-ocean">{{ userLevel.name }}</p>
-                    <p class="text-sm text-gray-600">{{ userLevel.stars }} Star Level</p>
+                    <p class="font-semibold text-deep-ocean text-sm sm:text-base">{{ userLevel.name }}</p>
+                    <p class="text-xs sm:text-sm text-gray-600">{{ userLevel.stars }} Star Level</p>
                   </div>
                 </div>
-                <div class="text-right">
-                  <p class="text-sm text-gray-600">Role</p>
-                  <p class="font-semibold text-deep-ocean capitalize">{{ userRole }}</p>
+                <div class="flex items-center justify-between sm:block">
+                  <div>
+                    <p class="text-xs sm:text-sm text-gray-600">Role</p>
+                    <p class="font-semibold text-deep-ocean capitalize text-sm sm:text-base">{{ userRole }}</p>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="text-right">
-              <p class="text-sm text-gray-600">Referral Code</p>
-              <span class="font-mono bg-gray-100 px-3 py-1 rounded text-deep-ocean">{{ userReferralCode }}</span>
+            
+            <!-- Right side - Referral code -->
+            <div class="flex flex-col items-start sm:items-end">
+              <p class="text-xs sm:text-sm text-gray-600 mb-1">Referral Code</p>
+              <span class="font-mono bg-gray-100 px-2 sm:px-3 py-1 rounded text-deep-ocean text-xs sm:text-sm break-all">{{ userReferralCode }}</span>
             </div>
           </div>
           
@@ -41,18 +46,18 @@
           </div>
         </div>
 
-        <!-- Stats grid -->
+        <!-- Stats grid - Mobile responsive -->
         <div class="responsive-grid mb-6 lg:mb-8">
-          <div class="card p-6 rounded-2xl">
+          <div class="card p-4 sm:p-6 rounded-2xl">
             <div class="flex items-center">
-              <div class="p-3 rounded-full bg-blue-100">
-                <svg class="w-6 h-6 text-ocean" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="p-2 sm:p-3 rounded-full bg-blue-100 flex-shrink-0">
+                <svg class="w-5 h-5 sm:w-6 sm:h-6 text-ocean" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
               </div>
-              <div class="ml-4">
-                <p class="text-sm text-gray-600">Active Subscription</p>
-                <p class="text-2xl font-bold text-deep-ocean">{{ subscriptionType }}</p>
+              <div class="ml-3 sm:ml-4 min-w-0">
+                <p class="text-xs sm:text-sm text-gray-600">Active Subscription</p>
+                <p class="text-lg sm:text-2xl font-bold text-deep-ocean truncate">{{ subscriptionType }}</p>
               </div>
             </div>
           </div>
@@ -122,30 +127,40 @@
           </div>
         </div>
 
-        <!-- Recent Activity -->
-        <div class="card p-6 rounded-2xl">
-          <h3 class="text-lg font-bold text-deep-ocean mb-4">Recent Activity</h3>
-          <div class="space-y-4">
-            <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-              <div class="flex items-center space-x-3">
-                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span class="text-sm text-gray-700">Subscription renewed for Week 45</span>
+        <!-- Payment Section - Two column layout on large screens -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-6 lg:mb-8">
+          <!-- USDT Transfer -->
+          <div class="lg:col-span-1">
+            <SendUSDTForm />
+          </div>
+          
+          <!-- Recent Activity -->
+          <div class="lg:col-span-1">
+            <div class="card p-4 sm:p-6 rounded-2xl h-full">
+              <h3 class="text-base sm:text-lg font-bold text-deep-ocean mb-4">Recent Activity</h3>
+              <div class="space-y-3 sm:space-y-4">
+                <div class="flex items-center justify-between py-2 sm:py-3 border-b border-gray-100 last:border-0">
+                  <div class="flex items-center space-x-2 sm:space-x-3">
+                    <div class="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                    <span class="text-xs sm:text-sm text-gray-700">Subscription renewed for Week 45</span>
+                  </div>
+                  <span class="text-xs text-gray-500 flex-shrink-0 ml-2">2h ago</span>
+                </div>
+                <div class="flex items-center justify-between py-2 sm:py-3 border-b border-gray-100 last:border-0">
+                  <div class="flex items-center space-x-2 sm:space-x-3">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                    <span class="text-xs sm:text-sm text-gray-700">New team member joined</span>
+                  </div>
+                  <span class="text-xs text-gray-500 flex-shrink-0 ml-2">1d ago</span>
+                </div>
+                <div class="flex items-center justify-between py-2 sm:py-3 border-b border-gray-100 last:border-0">
+                  <div class="flex items-center space-x-2 sm:space-x-3">
+                    <div class="w-2 h-2 bg-yellow-500 rounded-full flex-shrink-0"></div>
+                    <span class="text-xs sm:text-sm text-gray-700">Reward earned: $15 USDT</span>
+                  </div>
+                  <span class="text-xs text-gray-500 flex-shrink-0 ml-2">3d ago</span>
+                </div>
               </div>
-              <span class="text-xs text-gray-500">2 hours ago</span>
-            </div>
-            <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-              <div class="flex items-center space-x-3">
-                <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span class="text-sm text-gray-700">New team member joined</span>
-              </div>
-              <span class="text-xs text-gray-500">1 day ago</span>
-            </div>
-            <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-              <div class="flex items-center space-x-3">
-                <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <span class="text-sm text-gray-700">Reward earned: $15 USDT</span>
-              </div>
-              <span class="text-xs text-gray-500">3 days ago</span>
             </div>
           </div>
         </div>
@@ -158,6 +173,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { calculateUserLevel, calculateTotalEarnings, SUBSCRIBER_LEVELS } from '../utils/userLevels.js'
 import AppLayout from './layouts/AppLayout.vue'
+import SendUSDTForm from './SendUSDTForm.vue'
 
 const router = useRouter()
 

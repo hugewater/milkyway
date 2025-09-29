@@ -521,7 +521,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, onErrorCaptured } from 'vue'
-import AppLayout from '../../layouts/AppLayout.vue'
+// Use the sidebar AppLayout (with left menu) instead of the top-nav layout
+import AppLayout from '../layouts/AppLayout.vue'
 import ConnectWalletButton from '../../components/ConnectWalletButton.vue'
 
 console.log('MyWallets component initializing')
